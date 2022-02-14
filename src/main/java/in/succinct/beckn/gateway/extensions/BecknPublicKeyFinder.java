@@ -18,6 +18,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Succinct provides an Extension registry that application programmers can register to . These are hooks called at specific places to
+ * implement some externalized logic.
+ * This is a hook used by {@link in.succinct.beckn.Request#getPublicKey(String subscriber_id, String public_key_id)} (String, String)}
+ * to while verifying signature of a subscriber identified from auth header.
+ * The reason it is a hook is because, the {@link in.succinct.beckn.Request} class doesnot know of your registry or caches to get the public key infromation.
+ *
+ */
 public class BecknPublicKeyFinder implements Extension {
     static {
         Registry.instance().registerExtension("beckn.public.key.get",new BecknPublicKeyFinder());

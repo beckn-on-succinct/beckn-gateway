@@ -12,10 +12,17 @@ import com.venky.swf.sql.Select;
 
 import java.util.List;
 
+/**
+ * Succinct provides an Extension registry that application programmers can register to . These are hooks called at specific places to
+ * implement some externalized logic.
+ * This is a hook used by {@link in.succinct.beckn.Request#getPrivateKey(String subscriber_id, String public_key_id)} (String, String)}
+ * to sign your request.
+ */
 public class BecknPrivateKeyFinder implements Extension {
     static {
         Registry.instance().registerExtension("beckn.private.key.get",new BecknPrivateKeyFinder());
     }
+
 
     @Override
     public void invoke(Object... context) {

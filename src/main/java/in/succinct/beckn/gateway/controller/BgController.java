@@ -6,6 +6,9 @@ import com.venky.core.util.ObjectUtil;
 import com.venky.swf.controller.Controller;
 import com.venky.swf.controller.annotations.RequireLogin;
 import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
+import com.venky.swf.db.model.SWFHttpResponse;
+import com.venky.swf.integration.FormatHelper;
+import com.venky.swf.integration.IntegrationAdaptor;
 import com.venky.swf.integration.api.Call;
 import com.venky.swf.integration.api.HttpMethod;
 import com.venky.swf.integration.api.InputFormat;
@@ -22,6 +25,7 @@ import in.succinct.beckn.Error;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Response;
 import in.succinct.beckn.Subscriber;
+import in.succinct.beckn.gateway.configuration.AppInstaller;
 import in.succinct.beckn.gateway.extensions.BecknPublicKeyFinder;
 import in.succinct.beckn.gateway.util.GWConfig;
 import org.json.simple.JSONObject;
@@ -43,10 +47,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Controllers in Succinct return Views that is serialized and sent as response.
+ */
 public class BgController extends Controller {
     public BgController(Path path) {
         super(path);
     }
+
+    /**
+     * Give a NACK response
+     * @param request - incoming request
+     * @param realm - caller
+     * @return a nack response
+     */
     public View nack(Request request, String realm){
         Acknowledgement nack = new Acknowledgement(Status.NACK);
         return new BytesView(getPath(),
@@ -59,11 +73,22 @@ public class BgController extends Controller {
             }
         };
     }
+
+    /**
+     * Returns an ACK Response.
+     * @param request - Incoming  Request
+     * @return - ACK Response
+     */
     public View ack(Request request){
         Acknowledgement ack = new Acknowledgement(Status.ACK);
         return new BytesView(getPath(),new Response(request.getContext(),ack).toString().getBytes(StandardCharsets.UTF_8) , MimeType.APPLICATION_JSON);
     }
 
+    /**
+     * Get caller's meta information from the {@link Request#getContext()} based on which the registry will be queried
+     * @param request
+     * @return
+     */
     private Subscriber getCriteria(Request request) {
         Subscriber criteria = new Subscriber();
         Context context = request.getContext();
@@ -85,19 +110,27 @@ public class BgController extends Controller {
         try {
             request = new Request(StringUtil.read(getPath().getInputStream()));
             List<Task> tasks = new ArrayList<>();
+
+            /*
+            Validate signature if authorization is enabled
+             */
             if (!GWConfig.isAuthorizationHeaderEnabled() ||
                     request.verifySignature("Authorization",getPath().getHeaders() , false)){
                 Context context = request.getContext();
                 if ("search".equals(request.getContext().getAction())){
+                    /* Get basic meta from context */
                     Subscriber criteria = getCriteria(request);
+
                     criteria.setType(Subscriber.SUBSCRIBER_TYPE_BPP);
 
                     if (!ObjectUtil.isVoid(context.getBppId())){
                         criteria.setSubscriberId(context.getBppId());
                     }
 
+                    /* lookup for bpps in the domain and city/country */
                     List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(criteria);
                     for (Subscriber subscriber : subscriberList){
+                        /* For each subscriber submit an async task */
                         tasks.add(new Search(request,subscriber,getPath().getHeaders()));
                     }
                 }else if ("on_search".equals(request.getContext().getAction())){
@@ -108,12 +141,14 @@ public class BgController extends Controller {
                     }else  {
                         throw new RuntimeException("BAP not known!");
                     }
+                    /* For each subscriber submit an async task Will be only one, the BAP who fired the search*/
                     List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(criteria);
                     for (Subscriber subscriber : subscriberList){
                         tasks.add(new OnSearch(request,subscriber,getPath().getHeaders()));
                     }
                 }
-                TaskManager.instance().executeAsync(tasks,false);
+                //* As the tasks are not critical, these are not persisted. Non persistence also gives speed. And Persistence requires tasks to be serializable.
+                TaskManager.instance().executeAsync(tasks,false); //Submit all async tasks.
                 return ack(request);
             }else {
                 return nack(request,request.getContext().getBapId());
@@ -135,11 +170,19 @@ public class BgController extends Controller {
     }
 
 
+    /**
+     * /search call is delegated to act
+     * @return the ACK/NACK response
+     */
     @RequireLogin(false)
     public View search() {
         return act();
     }
 
+    /**
+     * /on_search call is delegated to act
+     * @return the ACK/NACK response
+     */
     @RequireLogin(false)
     public View on_search() {
         return act();
@@ -237,5 +280,10 @@ public class BgController extends Controller {
         output.put("answer", Crypt.getInstance().decrypt((String)object.get("challenge"),"AES",key));
 
         return new BytesView(getPath(),output.toString().getBytes(),MimeType.APPLICATION_JSON);
+    }
+
+    public View subscribe() {
+        AppInstaller.registerBecknKeys();
+        return IntegrationAdaptor.instance(SWFHttpResponse.class, FormatHelper.getFormatClass(MimeType.APPLICATION_JSON)).createStatusResponse(getPath(),null);
     }
 }

@@ -27,11 +27,20 @@ import java.util.Map;
 
 public class AppInstaller implements Installer {
 
+    /*
+    Succinct framework calls this function in each module's installer.
+     swf.properties in each module's(resources/config), tells the framework of this and other information.
+
+     */
     public void install() {
         generatePrivateKeys();
-        registerBecknKeys();
+        //registerBecknKeys(); Will fail unless registry has the required keys.
     }
 
+    /* Generate the Private Keys needed to communicate with beckn network
+    This data is stored in a table called CRYPTO_KEYS , you will be able to access it  as "/crypto_keys",
+    after bringing up the application and logging in as "root"
+    */
     public void generatePrivateKeys() {
         CryptoKey key = CryptoKey.find(GWConfig.getPublicKeyId(), CryptoKey.PURPOSE_SIGNING);
         if (key.getRawRecord().isNewRecord()) {
@@ -52,7 +61,11 @@ public class AppInstaller implements Installer {
         }
     }
 
-    private void registerBecknKeys() {
+    /*
+        Call this from the controller manually to subscribe on the network.
+
+     */
+    public static void registerBecknKeys() {
 
         Subscriber subscriber = new Subscriber();
         subscriber.setSubscriberId(GWConfig.getSubscriberId());
