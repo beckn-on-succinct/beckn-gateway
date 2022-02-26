@@ -16,6 +16,7 @@ import com.venky.swf.path.Path;
 import com.venky.swf.plugins.background.core.Task;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.plugins.collab.db.model.CryptoKey;
+import com.venky.swf.routing.Config;
 import com.venky.swf.views.BytesView;
 import com.venky.swf.views.View;
 import in.succinct.beckn.Acknowledgement;
@@ -46,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
 /**
  * Controllers in Succinct return Views that is serialized and sent as response.
@@ -63,8 +65,11 @@ public class BgController extends Controller {
      */
     public View nack(Request request, String realm){
         Acknowledgement nack = new Acknowledgement(Status.NACK);
+        String response = new Response(request.getContext(),new Acknowledgement(Status.NACK)).toString();
+        Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,response);
+
         return new BytesView(getPath(),
-                new Response(request.getContext(),new Acknowledgement(Status.NACK)).toString().getBytes(StandardCharsets.UTF_8),
+                response.getBytes(StandardCharsets.UTF_8),
                 MimeType.APPLICATION_JSON,"WWW-Authenticate","Signature realm=\""+realm+"\"",
                 "headers=\"(created) (expires) digest\""){
             @Override
@@ -81,7 +86,10 @@ public class BgController extends Controller {
      */
     public View ack(Request request){
         Acknowledgement ack = new Acknowledgement(Status.ACK);
-        return new BytesView(getPath(),new Response(request.getContext(),ack).toString().getBytes(StandardCharsets.UTF_8) , MimeType.APPLICATION_JSON);
+        String responseString = new Response(request.getContext(),ack).toString();
+        Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,responseString);
+
+        return new BytesView(getPath(),responseString.getBytes(StandardCharsets.UTF_8) , MimeType.APPLICATION_JSON);
     }
 
     /**
@@ -165,6 +173,7 @@ public class BgController extends Controller {
             StringWriter message = new StringWriter();
             ex.printStackTrace(new PrintWriter(message));
             error.setMessage(message.toString());
+            Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,message.toString());
             return new BytesView(getPath(),response.toString().getBytes(StandardCharsets.UTF_8),MimeType.APPLICATION_JSON);
         }
     }
