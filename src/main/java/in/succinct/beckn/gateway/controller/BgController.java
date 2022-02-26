@@ -115,7 +115,7 @@ public class BgController extends Controller {
             Validate signature if authorization is enabled
              */
             if (!GWConfig.isAuthorizationHeaderEnabled() ||
-                    request.verifySignature("Authorization",getPath().getHeaders() , false)){
+                    request.verifySignature("Authorization",getPath().getHeaders() , GWConfig.isAuthorizationHeaderEnabled())){
                 Context context = request.getContext();
                 if ("search".equals(request.getContext().getAction())){
                     /* Get basic meta from context */
