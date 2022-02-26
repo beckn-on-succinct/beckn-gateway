@@ -118,6 +118,8 @@ public class BgController extends Controller {
         try {
             request = new Request(StringUtil.read(getPath().getInputStream()));
             List<Task> tasks = new ArrayList<>();
+            Config.instance().getLogger(getClass().getName()).info("Headers:" + getPath().getHeaders());
+            Config.instance().getLogger(getClass().getName()).info("Payload:" + request);
 
             /*
             Validate signature if authorization is enabled
