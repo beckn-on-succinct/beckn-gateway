@@ -65,7 +65,7 @@ public class BgController extends Controller {
      */
     public View nack(Request request, String realm){
         Acknowledgement nack = new Acknowledgement(Status.NACK);
-        String response = new Response(request.getContext(),new Acknowledgement(Status.NACK)).toString();
+        String response = new Response(null,new Acknowledgement(Status.NACK)).toString();
         Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,response);
 
         return new BytesView(getPath(),
@@ -86,10 +86,10 @@ public class BgController extends Controller {
      */
     public View ack(Request request){
         Acknowledgement ack = new Acknowledgement(Status.ACK);
-        /*        String responseString = new Response(request.getContext(),ack).toString();
-        Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,responseString);*/
+        String responseString = new Response(null,ack).toString();
+        Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,responseString);
 
-        return new BytesView(getPath(),ack.toString().getBytes(StandardCharsets.UTF_8) , MimeType.APPLICATION_JSON);
+        return new BytesView(getPath(),responseString.getBytes(StandardCharsets.UTF_8) , MimeType.APPLICATION_JSON);
     }
 
     /**
