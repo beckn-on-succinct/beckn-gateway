@@ -8,14 +8,14 @@
   <description>gateway</description>
     <properties>
       <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <revision>2.9-SNAPSHOT</revision>
+        <revision>2.9</revision>
     </properties>
     <build>
         <plugins>
             <plugin>
                 <groupId>com.github.venkatramanm.swf-all</groupId>
                 <artifactId>swf-maven-plugin</artifactId>
-                <version>2.9-SNAPSHOT</version>
+                <version>${revision}</version>
                     <dependencies>
                         <dependency>
                             <groupId>in.succinct.beckn</groupId>
@@ -70,7 +70,7 @@
         <dependency>
             <groupId>in.succinct.beckn</groupId>
             <artifactId>sdk</artifactId>
-            <version>1.1-SNAPSHOT</version>
+            <version>1.1</version>
         </dependency>
         <!--
         <dependency>
