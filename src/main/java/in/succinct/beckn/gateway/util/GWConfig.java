@@ -52,4 +52,9 @@ public class GWConfig {
     public static boolean isAuthorizationHeaderEnabled(){
         return Config.instance().getBooleanProperty("beckn.auth.enabled", false);
     }
+
+    public static boolean isAuthorizationHeaderMandatory(){
+        return Config.instance().getBooleanProperty("beckn.auth.header.mandatory", false);
+    }
+
 }
