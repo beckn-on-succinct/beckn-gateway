@@ -65,7 +65,7 @@
       <dependency>
           <groupId>com.github.venkatramanm.swf-all</groupId>
           <artifactId>swf-plugin-collab</artifactId>
-          <version>${revision}</version>
+          <version>[${revision},)</version>
       </dependency>
         <dependency>
             <groupId>in.succinct.beckn</groupId>
