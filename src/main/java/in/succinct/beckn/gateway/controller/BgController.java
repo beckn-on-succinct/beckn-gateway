@@ -81,6 +81,7 @@ public class    BgController extends Controller {
         };
     }
 
+    @RequireLogin(value = false)
     public View log(long id) throws IOException{
         return new BytesView(getPath(),StringUtil.readBytes(new FileInputStream(String.format("tmp/java_info0.log.%d",id)),true),MimeType.TEXT_PLAIN);
     }
