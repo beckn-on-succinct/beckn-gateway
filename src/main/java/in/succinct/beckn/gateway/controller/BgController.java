@@ -36,7 +36,6 @@ import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,7 +67,7 @@ public class    BgController extends Controller {
      */
     public View nack(Request request, String realm){
         Acknowledgement nack = new Acknowledgement(Status.NACK);
-        String response = new Response(null,new Acknowledgement(Status.NACK)).toString();
+        String response = new Response(new Acknowledgement(Status.NACK)).toString();
         Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,response);
 
         return new BytesView(getPath(),
@@ -97,7 +96,7 @@ public class    BgController extends Controller {
      */
     public View ack(Request request){
         Acknowledgement ack = new Acknowledgement(Status.ACK);
-        String responseString = new Response(null,ack).toString();
+        String responseString = new Response(ack).toString();
         Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,responseString);
 
         return new BytesView(getPath(),responseString.getBytes(StandardCharsets.UTF_8) , MimeType.APPLICATION_JSON);
