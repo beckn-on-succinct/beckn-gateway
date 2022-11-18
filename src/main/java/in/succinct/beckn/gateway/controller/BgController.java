@@ -43,6 +43,7 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
@@ -83,6 +84,9 @@ public class    BgController extends Controller {
 
     @RequireLogin(value = false)
     public View log(long id) throws IOException{
+        if (!Config.instance().isDevelopmentEnvironment()){
+            throw new AccessDeniedException("You cannot view logs!");
+        }
         return new BytesView(getPath(),StringUtil.readBytes(new FileInputStream(String.format("tmp/java_info0.log.%d",id)),true),MimeType.TEXT_PLAIN);
     }
 
