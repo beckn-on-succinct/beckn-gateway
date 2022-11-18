@@ -36,6 +36,8 @@ import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -52,7 +54,7 @@ import java.util.logging.Level;
 /**
  * Controllers in Succinct return Views that is serialized and sent as response.
  */
-public class BgController extends Controller {
+public class    BgController extends Controller {
     public BgController(Path path) {
         super(path);
     }
@@ -77,6 +79,10 @@ public class BgController extends Controller {
                 super.write(HttpServletResponse.SC_UNAUTHORIZED);
             }
         };
+    }
+
+    public View log(long id) throws IOException{
+        return new BytesView(getPath(),StringUtil.readBytes(new FileInputStream(String.format("tmp/java_info0.log.%d",id)),true),MimeType.TEXT_PLAIN);
     }
 
     /**
