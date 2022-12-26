@@ -41,11 +41,18 @@ public class ECEventEmitter {
     public static final String ACTION_ON_SEARCH = "on_search";
 
 
+    public boolean isEventPublishingRequired(Request request){
+        if (request.getContext().getTransactionId().contains(".")){
+            return true;
+        }
+        return false;
+    }
     public void emit(Subscriber target, Request request) {
-        String txn = request.getContext().getTransactionId();
-        if (!txn.contains(".")){
+        boolean publishingRequired = isEventPublishingRequired(request);
+        if (!publishingRequired){
             return;
         }
+        String txn = request.getContext().getTransactionId();
         String eId = txn.substring(txn.lastIndexOf('.')+1);
 
         String action = request.getContext().getAction();
