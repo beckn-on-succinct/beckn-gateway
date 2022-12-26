@@ -15,7 +15,7 @@ import com.venky.swf.integration.api.InputFormat;
 import com.venky.swf.path.Path;
 import com.venky.swf.plugins.background.core.Task;
 import com.venky.swf.plugins.background.core.TaskManager;
-import com.venky.swf.plugins.collab.db.model.CryptoKey;
+import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.routing.Config;
 import com.venky.swf.views.BytesView;
 import com.venky.swf.views.View;
@@ -28,6 +28,7 @@ import in.succinct.beckn.Response;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.gateway.configuration.AppInstaller;
 import in.succinct.beckn.gateway.extensions.BecknPublicKeyFinder;
+import in.succinct.beckn.gateway.util.ECEventEmitter;
 import in.succinct.beckn.gateway.util.GWConfig;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -249,6 +250,7 @@ public class    BgController extends Controller {
                 call.header("Authorization",headers.get("Authorization"));
             }
             call.getResponseAsJson();
+            new ECEventEmitter().emit(bpp,clone);
         }
     }
     public static class OnSearch implements Task {
@@ -270,6 +272,7 @@ public class    BgController extends Controller {
             if (this.headers != null && headers.containsKey("Authorization")){
                 call.header("Authorization",headers.get("Authorization"));
             }
+            new ECEventEmitter().emit(bap,clone);
             call.getResponseAsJson();
         }
     }
