@@ -10,6 +10,11 @@ import java.util.Map;
 import java.util.UUID;
 
 public class ECEventEmitter {
+    public static Map<String,String> subscriberTypeMap = new HashMap<String,String>(){{
+        put(Subscriber.SUBSCRIBER_TYPE_BPP,"bpp");
+        put(Subscriber.SUBSCRIBER_TYPE_BAP,"bap");
+        put(Subscriber.SUBSCRIBER_TYPE_BG, "gateway");
+    }};
     private static Map<String, JSONObject> eventMeta = new HashMap<String,JSONObject>(){{
         put(ACTION_SEARCH, new JSONObject(){{
             put("eventCode",ACTION_SEARCH);
@@ -30,11 +35,6 @@ public class ECEventEmitter {
             }});
         }});
 
-    }};
-    public static Map<String,String> subscriberTypeMap = new HashMap<String,String>(){{
-        put(Subscriber.SUBSCRIBER_TYPE_BPP,"bpp");
-        put(Subscriber.SUBSCRIBER_TYPE_BAP,"bap");
-        put(Subscriber.SUBSCRIBER_TYPE_BG, "gateway");
     }};
 
     public static final String ACTION_SEARCH = "search";
