@@ -17,21 +17,21 @@ public class ECEventEmitter {
     }};
     private static Map<String, JSONObject> eventMeta = new HashMap<String,JSONObject>(){{
         put(ACTION_SEARCH, new JSONObject(){{
-            put("eventCode","GTW_srch_brdcst");
+            put("eventCode","mbgw_srch_brdcst");
             put("eventTitle","Broadcasting search");
             put("eventMessage","Waiting for catalog");
             put("eventSource", new JSONObject(){{
-                put("eventSourceId",GWConfig.getSubscriberId());
-                put("eventSourceType", subscriberTypeMap.get(Subscriber.SUBSCRIBER_TYPE_BG));
+                put("id",GWConfig.getSubscriberId());
+                put("type", subscriberTypeMap.get(Subscriber.SUBSCRIBER_TYPE_BG));
             }});
         }});
         put(ACTION_ON_SEARCH, new JSONObject(){{
-            put("eventCode","GTW_sent_ctlg_BAP");
+            put("eventCode","mbgw_sent_ctlg_bap");
             put("eventTitle","Sending catalog");
             put("eventMessage","I am browsing the catalog");
             put("eventSource", new JSONObject(){{
-                put("eventSourceId",GWConfig.getSubscriberId());
-                put("eventSourceType", subscriberTypeMap.get(Subscriber.SUBSCRIBER_TYPE_BG));
+                put("id",GWConfig.getSubscriberId());
+                put("type", subscriberTypeMap.get(Subscriber.SUBSCRIBER_TYPE_BG));
             }});
         }});
 
@@ -52,24 +52,26 @@ public class ECEventEmitter {
         if (!publishingRequired){
             return;
         }
-        String txn = request.getContext().getTransactionId();
-        String eId = txn.substring(txn.lastIndexOf('.')+1);
+        String txn = request.getContext().getTransactionId(); //uuid.exid
+        String eId = txn.substring(txn.lastIndexOf('.')+1);  //exid
 
         String action = request.getContext().getAction();
 
 
         JSONObject eventJSON = new JSONObject();
         eventJSON.put("experienceId",eId);
-        eventJSON.put("eventId",UUID.randomUUID().toString());
+        //eventJSON.put("eventId",UUID.randomUUID().toString());
         eventJSON.putAll(eventMeta.get(action));
+        /*
         eventJSON.put("context",new JSONObject(){{
             put("message_id",request.getContext().getMessageId());
             put("transaction_id",request.getContext().getTransactionId());
         }});
+        */
 
         eventJSON.put("eventDestination",new JSONObject(){{
-            put("eventDestinationId",target.getSubscriberId());
-            put("eventDestinationType", subscriberTypeMap.get(target.getType()));
+            put("id",target.getSubscriberId());
+            put("type", subscriberTypeMap.get(target.getType()));
         }});
         eventJSON.put("eventStart_ts",request.getContext().getTimestamp());
         eventJSON.put("created_ts",request.getContext().getTimestamp());
