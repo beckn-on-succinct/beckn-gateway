@@ -17,7 +17,7 @@ public class ECEventEmitter {
     }};
     private static Map<String, JSONObject> eventMeta = new HashMap<String,JSONObject>(){{
         put(ACTION_SEARCH, new JSONObject(){{
-            put("eventCode",ACTION_SEARCH);
+            put("eventCode","GTW_srch_brdcst");
             put("eventTitle","Broadcasting search");
             put("eventMessage","Waiting for catalog");
             put("eventSource", new JSONObject(){{
@@ -26,9 +26,9 @@ public class ECEventEmitter {
             }});
         }});
         put(ACTION_ON_SEARCH, new JSONObject(){{
-            put("eventCode",ACTION_ON_SEARCH);
+            put("eventCode","GTW_sent_ctlg_BAP");
             put("eventTitle","Sending catalog");
-            put("eventMessage","Received a catalog");
+            put("eventMessage","I am browsing the catalog");
             put("eventSource", new JSONObject(){{
                 put("eventSourceId",GWConfig.getSubscriberId());
                 put("eventSourceType", subscriberTypeMap.get(Subscriber.SUBSCRIBER_TYPE_BG));
@@ -73,7 +73,7 @@ public class ECEventEmitter {
         }});
         eventJSON.put("eventStart_ts",request.getContext().getTimestamp());
         eventJSON.put("created_ts",request.getContext().getTimestamp());
-
+        eventJSON.put("payload",request.getInner());
         Event.find("ec_publish").raise(eventJSON);
     }
 }
