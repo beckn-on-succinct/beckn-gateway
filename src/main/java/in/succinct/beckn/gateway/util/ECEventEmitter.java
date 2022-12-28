@@ -20,21 +20,13 @@ public class ECEventEmitter {
     private static Map<String, JSONObject> eventMeta = new HashMap<String,JSONObject>(){{
         put(ACTION_SEARCH, new JSONObject(){{
             put("eventCode","mbgw_srch_brdcst");
-            put("eventTitle","Broadcasting search");
-            put("eventMessage","Waiting for catalog");
-            put("eventSource", new JSONObject(){{
-                put("id",GWConfig.getSubscriberId());
-                put("type", subscriberTypeMap.get(Subscriber.SUBSCRIBER_TYPE_BG));
-            }});
+            put("eventSourceId", GWConfig.getSubscriberId());
+            put("eventAction",ACTION_SEARCH);
         }});
         put(ACTION_ON_SEARCH, new JSONObject(){{
             put("eventCode","mbgw_sent_ctlg_bap");
-            put("eventTitle","Sending catalog");
-            put("eventMessage","I am browsing the catalog");
-            put("eventSource", new JSONObject(){{
-                put("id",GWConfig.getSubscriberId());
-                put("type", subscriberTypeMap.get(Subscriber.SUBSCRIBER_TYPE_BG));
-            }});
+            put("eventSourceId",GWConfig.getSubscriberId());
+            put("eventAction",ACTION_ON_SEARCH);
         }});
 
     }};
@@ -62,21 +54,9 @@ public class ECEventEmitter {
 
         JSONObject eventJSON = new JSONObject();
         eventJSON.put("experienceId",eId);
-        //eventJSON.put("eventId",UUID.randomUUID().toString());
         eventJSON.putAll(eventMeta.get(action));
-        /*
-        eventJSON.put("context",new JSONObject(){{
-            put("message_id",request.getContext().getMessageId());
-            put("transaction_id",request.getContext().getTransactionId());
-        }});
-        */
-
-        eventJSON.put("eventDestination",new JSONObject(){{
-            put("id",target.getSubscriberId());
-            put("type", subscriberTypeMap.get(target.getType()));
-        }});
+        eventJSON.put("eventDestinationId",target.getSubscriberId());
         eventJSON.put("eventStart_ts",request.getContext().getTimestamp());
-        eventJSON.put("created_ts",request.getContext().getTimestamp());
         eventJSON.put("payload",request.getInner());
         TaskManager.instance().executeAsync((DbTask)()-> Event.find("ec_publish").raise(eventJSON),false);
     }
