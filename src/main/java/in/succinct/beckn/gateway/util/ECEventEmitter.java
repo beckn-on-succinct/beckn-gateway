@@ -1,6 +1,8 @@
 package in.succinct.beckn.gateway.util;
 
 import com.venky.swf.db.model.application.Event;
+import com.venky.swf.plugins.background.core.DbTask;
+import com.venky.swf.plugins.background.core.TaskManager;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
 import org.json.simple.JSONObject;
@@ -76,6 +78,6 @@ public class ECEventEmitter {
         eventJSON.put("eventStart_ts",request.getContext().getTimestamp());
         eventJSON.put("created_ts",request.getContext().getTimestamp());
         eventJSON.put("payload",request.getInner());
-        Event.find("ec_publish").raise(eventJSON);
+        TaskManager.instance().executeAsync((DbTask)()-> Event.find("ec_publish").raise(eventJSON),false);
     }
 }
