@@ -56,8 +56,8 @@ public class ECEventEmitter {
         eventJSON.put("experienceId",eId);
         eventJSON.putAll(eventMeta.get(action));
         eventJSON.put("eventDestinationId",target.getSubscriberId());
-        eventJSON.put("eventStart_ts",request.getContext().getTimestamp());
-        eventJSON.put("payload",request.getInner());
+        eventJSON.put("eventStart_ts",Request.TIMESTAMP_FORMAT.format(request.getContext().getTimestamp()));
+        //eventJSON.put("payload",request.getInner());
         TaskManager.instance().executeAsync((DbTask)()-> Event.find("ec_publish").raise(eventJSON),false);
     }
 }
