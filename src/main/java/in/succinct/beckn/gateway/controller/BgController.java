@@ -19,6 +19,7 @@ import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.routing.Config;
 import com.venky.swf.views.BytesView;
 import com.venky.swf.views.View;
+import com.vladsch.flexmark.ast.ThematicBreak;
 import in.succinct.beckn.Acknowledgement;
 import in.succinct.beckn.Acknowledgement.Status;
 import in.succinct.beckn.Context;
@@ -240,6 +241,15 @@ public class    BgController extends Controller {
 
         @Override
         public void execute() {
+            ECEventEmitter ecEventEmitter = new ECEventEmitter();
+            if (ecEventEmitter.isEventPublishingRequired(originalRequest)){
+                try{
+                    long maxSleepTime = 2*1000L; //2 seconds
+                    Thread.sleep(Math.max(Config.instance().getLongProperty("ec.sleep.time.millis",maxSleepTime),maxSleepTime));
+                }catch (Exception ex){
+                    //
+                }
+            }
             Request clone = new Request(originalRequest.toString());
 
             Call<InputStream> call = new Call<InputStream>().url(bpp.getSubscriberUrl()+ "/"+clone.getContext().getAction()).
@@ -250,7 +260,7 @@ public class    BgController extends Controller {
                 call.header("Authorization",headers.get("Authorization"));
             }
             call.getResponseAsJson();
-            new ECEventEmitter().emit(bpp,clone);
+            ecEventEmitter.emit(bpp,clone);
         }
     }
     public static class OnSearch implements Task {
@@ -264,6 +274,15 @@ public class    BgController extends Controller {
         }
         @Override
         public void execute() {
+            ECEventEmitter ecEventEmitter = new ECEventEmitter();
+            if (ecEventEmitter.isEventPublishingRequired(originalRequest)){
+                try{
+                    long maxSleepTime = 2*1000L; //2 seconds
+                    Thread.sleep(Math.max(Config.instance().getLongProperty("bg.ec.sleep.time.millis",maxSleepTime),maxSleepTime));
+                }catch (Exception ex){
+                    //
+                }
+            }
             Request clone = new Request(originalRequest.toString());
 
             Call<InputStream> call = new Call<InputStream>().url(bap.getSubscriberUrl()+ "/"+clone.getContext().getAction()).
