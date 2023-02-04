@@ -114,7 +114,7 @@ public class    BgController extends Controller {
     private Subscriber getCriteria(Request request) {
         Subscriber criteria = new Subscriber();
         Context context = request.getContext();
-        String countryCode = context.getCountry()
+        String countryCode = context.getCountry();
         String cityCode = context.getCity();
         if (countryCode != null){
             criteria.setCountry(countryCode);
