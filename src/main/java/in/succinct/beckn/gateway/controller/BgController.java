@@ -22,8 +22,10 @@ import com.venky.swf.views.View;
 import com.vladsch.flexmark.ast.ThematicBreak;
 import in.succinct.beckn.Acknowledgement;
 import in.succinct.beckn.Acknowledgement.Status;
+import in.succinct.beckn.City;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Error;
+import in.succinct.beckn.Location;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Response;
 import in.succinct.beckn.Subscriber;
@@ -112,13 +114,20 @@ public class    BgController extends Controller {
     private Subscriber getCriteria(Request request) {
         Subscriber criteria = new Subscriber();
         Context context = request.getContext();
-        String countryCode = context.get("country");
-        String cityCode = context.get("city");
+        String countryCode = context.getCountry()
+        String cityCode = context.getCity();
         if (countryCode != null){
             criteria.setCountry(countryCode);
         }
         if (!ObjectUtil.isVoid(cityCode)){
-            criteria.setCity(cityCode);
+            if (!ObjectUtil.isVoid(context.getVersion())){
+                //1.x
+                criteria.setLocation(new Location());
+                criteria.getLocation().setCity(new City());
+                criteria.getLocation().getCity().setCode(cityCode);
+            }else {
+                criteria.setCity(cityCode);
+            }
         }
         criteria.setDomain(context.getDomain());
         criteria.setStatus(Subscriber.SUBSCRIBER_STATUS_SUBSCRIBED);
