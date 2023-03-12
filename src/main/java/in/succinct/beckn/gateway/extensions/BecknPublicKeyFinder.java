@@ -1,5 +1,6 @@
 package in.succinct.beckn.gateway.extensions;
 
+import com.venky.cache.Cache;
 import com.venky.core.util.ObjectHolder;
 import com.venky.core.util.ObjectUtil;
 import com.venky.extension.Extension;
@@ -15,8 +16,10 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Succinct provides an Extension registry that application programmers can register to . These are hooks called at specific places to
@@ -47,12 +50,34 @@ public class BecknPublicKeyFinder implements Extension {
             publicKeyHolder.set(subscribers.get(0).getSigningPublicKey());
         }
     }
+
+    private static Map<String,CacheEntry> cache = new HashMap<>();
+    private static class CacheEntry {
+        List<Subscriber> subscribers;
+        long expiry;
+    }
+    private static final long TTL = 2L * 60L * 1000L ;// 2 minutes in millis
+
+
     public static List<Subscriber> lookup(Subscriber subscriber){
+        String key = subscriber.toString();
+        CacheEntry entry = cache.get(key);
+        if (entry != null){
+            if (System.currentTimeMillis() > entry.expiry){
+                entry = null;
+                cache.remove(key);
+            }
+        }
+        if (entry != null){
+            return entry.subscribers;
+        }
+
 
         JSONArray responses = new Call<JSONObject>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() +"/lookup").
                 input(subscriber.getInner()).inputFormat(InputFormat.JSON)
                 .header("content-type", MimeType.APPLICATION_JSON.toString())
                 .header("accept",MimeType.APPLICATION_JSON.toString()).getResponseAsJson();
+
         if (responses == null) {
             responses = new JSONArray();
         }
@@ -62,10 +87,15 @@ public class BecknPublicKeyFinder implements Extension {
                 i.remove();
             }
         }
-        List<Subscriber> subscribers = new ArrayList<>();
+
+
+        entry = new CacheEntry();
+        entry.expiry = System.currentTimeMillis() + TTL; // This TTL is to force refresh to get updated cache!.
+        entry.subscribers = new ArrayList<>();
         for (Object o : responses){
-            subscribers.add(new Subscriber((JSONObject) o));
+            entry.subscribers.add(new Subscriber((JSONObject) o));
         }
-        return subscribers;
+        cache.put(key,entry);
+        return entry.subscribers;
     }
 }

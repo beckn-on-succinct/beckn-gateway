@@ -2,6 +2,7 @@ package in.succinct.beckn.gateway.controller;
 
 import com.venky.core.security.Crypt;
 import com.venky.core.string.StringUtil;
+import com.venky.core.util.ExceptionUtil;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.controller.Controller;
 import com.venky.swf.controller.annotations.RequireLogin;
@@ -45,6 +46,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
 import java.security.PrivateKey;
@@ -262,16 +264,28 @@ public class    BgController extends Controller {
             Request clone = new Request(originalRequest.toString());
 
             Call<InputStream> call = new Call<InputStream>().url(bpp.getSubscriberUrl()+ "/"+clone.getContext().getAction()).
-                    method(HttpMethod.POST).inputFormat(InputFormat.INPUT_STREAM).
+                    method(HttpMethod.POST).inputFormat(InputFormat.INPUT_STREAM).timeOut(GWConfig.getTimeOut()).
                     input(new ByteArrayInputStream(clone.toString().getBytes(StandardCharsets.UTF_8))).headers(getHeaders(clone));
 
             if (headers != null && headers.containsKey("Authorization")){
                 call.header("Authorization",headers.get("Authorization"));
             }
-            call.getResponseAsJson();
+            try {
+                call.getResponseAsJson();
+            }catch (RuntimeException ex){
+                if (ExceptionUtil.getEmbeddedException(ex,HttpTimeoutException.class) != null && GWConfig.disableSlowBpp()){
+                    new Call<JSONObject>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() +"/subscribers/disable").
+                            input(bpp.getInner()).inputFormat(InputFormat.JSON).headers(getHeaders(clone))
+                            .header("content-type", MimeType.APPLICATION_JSON.toString())
+                            .header("accept",MimeType.APPLICATION_JSON.toString()).hasErrors();
+                }
+            }
             ecEventEmitter.emit(bpp,clone);
         }
+
+
     }
+
     public static class OnSearch implements Task {
         Request originalRequest;
         Subscriber bap ;
@@ -295,7 +309,7 @@ public class    BgController extends Controller {
             Request clone = new Request(originalRequest.toString());
 
             Call<InputStream> call = new Call<InputStream>().url(bap.getSubscriberUrl()+ "/"+clone.getContext().getAction()).
-                    method(HttpMethod.POST).inputFormat(InputFormat.INPUT_STREAM).
+                    method(HttpMethod.POST).inputFormat(InputFormat.INPUT_STREAM).timeOut(GWConfig.getTimeOut()). //5 Seconds
                     input(new ByteArrayInputStream(clone.toString().getBytes(StandardCharsets.UTF_8))).headers(getHeaders(clone));
             if (this.headers != null && headers.containsKey("Authorization")){
                 call.header("Authorization",headers.get("Authorization"));

@@ -57,4 +57,12 @@ public class GWConfig {
         return Config.instance().getBooleanProperty("beckn.auth.header.mandatory", false);
     }
 
+    public static boolean disableSlowBpp(){
+        return Config.instance().getBooleanProperty("beckn.disable.slow.bpp", true);
+    }
+
+    public static long getTimeOut(){
+        return Config.instance().getLongProperty("beckn.network.timeout", 5 * 1000L);
+    }
+
 }
