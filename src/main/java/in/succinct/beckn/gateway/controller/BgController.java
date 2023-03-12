@@ -271,16 +271,23 @@ public class    BgController extends Controller {
                 call.header("Authorization",headers.get("Authorization"));
             }
             try {
-                call.getResponseAsJson();
+                if (call.hasErrors() && call.getStatus() > 500 ){
+                    disableBpp(getHeaders(clone));
+                }
             }catch (RuntimeException ex){
                 if (ExceptionUtil.getEmbeddedException(ex,HttpTimeoutException.class) != null && GWConfig.disableSlowBpp()){
-                    new Call<JSONObject>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() +"/subscribers/disable").
-                            input(bpp.getInner()).inputFormat(InputFormat.JSON).headers(getHeaders(clone))
-                            .header("content-type", MimeType.APPLICATION_JSON.toString())
-                            .header("accept",MimeType.APPLICATION_JSON.toString()).hasErrors();
+                    disableBpp(getHeaders(clone));
                 }
             }
             ecEventEmitter.emit(bpp,clone);
+        }
+
+        public void disableBpp(Map<String,String> headers){
+            new Call<JSONObject>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() +"/subscribers/disable").
+                    input(bpp.getInner()).inputFormat(InputFormat.JSON).headers(headers)
+                    .header("content-type", MimeType.APPLICATION_JSON.toString())
+                    .header("accept",MimeType.APPLICATION_JSON.toString()).hasErrors();
+
         }
 
 
