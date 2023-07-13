@@ -20,7 +20,6 @@ import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.routing.Config;
 import com.venky.swf.views.BytesView;
 import com.venky.swf.views.View;
-import com.vladsch.flexmark.ast.ThematicBreak;
 import in.succinct.beckn.Acknowledgement;
 import in.succinct.beckn.Acknowledgement.Status;
 import in.succinct.beckn.City;
@@ -32,6 +31,7 @@ import in.succinct.beckn.Response;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.gateway.configuration.AppInstaller;
 import in.succinct.beckn.gateway.extensions.BecknPublicKeyFinder;
+import in.succinct.beckn.gateway.util.BGEventEmitter;
 import in.succinct.beckn.gateway.util.ECEventEmitter;
 import in.succinct.beckn.gateway.util.GWConfig;
 import org.json.simple.JSONObject;
@@ -73,11 +73,14 @@ public class    BgController extends Controller {
      */
     public View nack(Request request, String realm){
         Acknowledgement nack = new Acknowledgement(Status.NACK);
-        String response = new Response(new Acknowledgement(Status.NACK)).toString();
-        Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,response);
+        Response response = new Response(new Acknowledgement(Status.NACK));
+        String sResponse = response.toString();
+
+        Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,sResponse);
+        BGEventEmitter.getInstance().log_request_processed(request.getContext(),0);
 
         return new BytesView(getPath(),
-                response.getBytes(StandardCharsets.UTF_8),
+                sResponse.getBytes(StandardCharsets.UTF_8),
                 MimeType.APPLICATION_JSON,"WWW-Authenticate","Signature realm=\""+realm+"\"",
                 "headers=\"(created) (expires) digest\""){
             @Override
@@ -103,7 +106,7 @@ public class    BgController extends Controller {
     public View ack(Request request){
         Acknowledgement ack = new Acknowledgement(Status.ACK);
         String responseString = new Response(ack).toString();
-        Config.instance().getLogger(BgController.class.getName()).log(Level.WARNING,responseString);
+        Config.instance().getLogger(BgController.class.getName()).log(Level.INFO,responseString);
 
         return new BytesView(getPath(),responseString.getBytes(StandardCharsets.UTF_8) , MimeType.APPLICATION_JSON);
     }
@@ -182,6 +185,7 @@ public class    BgController extends Controller {
                 }
                 //* As the tasks are not critical, these are not persisted. Non persistence also gives speed. And Persistence requires tasks to be serializable.
                 TaskManager.instance().executeAsync(tasks,false); //Submit all async tasks.
+                BGEventEmitter.getInstance().log_request_processed(context,tasks.size());
                 return ack(request);
             }else {
                 return nack(request,request.getContext().getBapId());
