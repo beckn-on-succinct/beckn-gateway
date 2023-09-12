@@ -287,7 +287,7 @@ public class    BgController extends Controller {
         }
 
         public void disableBpp(Map<String,String> headers){
-            new Call<JSONObject>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() +"/subscribers/disable").
+            new Call<JSONObject>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() ,"/disable").
                     input(bpp.getInner()).inputFormat(InputFormat.JSON).headers(headers)
                     .header("content-type", MimeType.APPLICATION_JSON.toString())
                     .header("accept",MimeType.APPLICATION_JSON.toString()).hasErrors();
