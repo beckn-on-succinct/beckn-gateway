@@ -276,22 +276,21 @@ public class    BgController extends Controller {
             }
             try {
                 if (call.hasErrors() && call.getStatus() > 500 ){
-                    disableBpp(getHeaders(clone));
+                    disableBpp();
                 }
             }catch (RuntimeException ex){
                 if (ExceptionUtil.getEmbeddedException(ex,HttpTimeoutException.class) != null && GWConfig.disableSlowBpp()){
-                    disableBpp(getHeaders(clone));
+                    disableBpp();
                 }
             }
             ecEventEmitter.emit(bpp,clone);
         }
 
-        public void disableBpp(Map<String,String> headers){
-            new Call<JSONObject>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() ,"/disable").
-                    input(bpp.getInner()).inputFormat(InputFormat.JSON).headers(headers)
-                    .header("content-type", MimeType.APPLICATION_JSON.toString())
-                    .header("accept",MimeType.APPLICATION_JSON.toString()).hasErrors();
-
+        public void disableBpp(){
+            Request clone = new Request(bpp.toString());
+            Map<String,String> headers = getHeaders(clone);
+            new Call<InputStream>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() ,"/disable").
+                    input(new ByteArrayInputStream(clone.toString().getBytes(StandardCharsets.UTF_8))).inputFormat(InputFormat.INPUT_STREAM).headers(headers).hasErrors();
         }
 
 
