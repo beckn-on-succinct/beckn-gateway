@@ -72,6 +72,11 @@
             <artifactId>sdk</artifactId>
             <version>[1.1,)</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.venkatramanm.swf-all</groupId>
+            <artifactId>swf-plugin-bootstrap</artifactId>
+            <version>[1.0,)</version>
+        </dependency>
         <!--
         <dependency>
           <groupId>com.h2database</groupId>
