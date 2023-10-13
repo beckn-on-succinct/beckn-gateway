@@ -11,6 +11,7 @@ import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.db.model.CryptoKey;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
+import in.succinct.beckn.gateway.extensions.BecknPublicKeyFinder;
 import in.succinct.beckn.gateway.util.GWConfig;
 import org.json.simple.JSONObject;
 
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 
 public class AppInstaller implements Installer {
 
@@ -75,8 +77,13 @@ public class AppInstaller implements Installer {
         Request request = new Request(subscriber.getInner());
 
         TaskManager.instance().executeAsync((Task) () -> {
+            List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(subscriber);
+            String api = "subscribe";
+            if (subscriberList.isEmpty()) {
+                api = "register";
+            }
 
-            JSONObject response = new Call<JSONObject>().url(GWConfig.getRegistryUrl() + "/subscribe").method(HttpMethod.POST).input(subscriber.getInner()).inputFormat(InputFormat.JSON).
+            JSONObject response = new Call<JSONObject>().url(GWConfig.getRegistryUrl() + "/" + api).method(HttpMethod.POST).input(subscriber.getInner()).inputFormat(InputFormat.JSON).
                     header("Content-Type", MimeType.APPLICATION_JSON.toString()).
                     header("Accept", MimeType.APPLICATION_JSON.toString()).
                     header("Authorization", request.generateAuthorizationHeader(GWConfig.getSubscriberId(), GWConfig.getPublicKeyId())).
