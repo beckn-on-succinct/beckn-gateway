@@ -9,6 +9,7 @@ import com.venky.swf.integration.api.InputFormat;
 import com.venky.swf.plugins.background.core.Task;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.db.model.CryptoKey;
+import com.venky.swf.routing.Config;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.gateway.extensions.BecknPublicKeyFinder;
@@ -73,6 +74,7 @@ public class AppInstaller implements Installer {
         subscriber.setSigningPublicKey(Request.getRawSigningKey(CryptoKey.find(GWConfig.getPublicKeyId(),CryptoKey.PURPOSE_SIGNING).getPublicKey()));
         subscriber.setEncrPublicKey(Request.getRawEncryptionKey(CryptoKey.find(GWConfig.getPublicKeyId(),CryptoKey.PURPOSE_ENCRYPTION).getPublicKey()));
         subscriber.setValidFrom(signingKey.getUpdatedAt());
+        subscriber.setSubscriberUrl(Config.instance().getServerBaseUrl()+"/bg");
         subscriber.setValidTo(new Date(signingKey.getUpdatedAt().getTime() + (long) (10L * 365.25D * 24L * 60L * 60L * 1000L)));
         Request request = new Request(subscriber.getInner());
 
