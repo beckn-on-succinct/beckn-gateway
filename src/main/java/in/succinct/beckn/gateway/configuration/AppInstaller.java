@@ -18,6 +18,7 @@ import org.json.simple.JSONObject;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
@@ -31,7 +32,7 @@ public class AppInstaller implements Installer {
      */
     public void install() {
         generatePrivateKeys();
-        //registerBecknKeys(); Will fail unless registry has the required keys.
+        registerBecknKeys(); //Will fail unless registry has the required keys.
     }
 
     /* Generate the Private Keys needed to communicate with beckn network
@@ -80,16 +81,22 @@ public class AppInstaller implements Installer {
 
         TaskManager.instance().executeAsync((Task) () -> {
             List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(subscriber);
-            String api = "subscribe";
+            List<String> apis = new ArrayList<>();
             if (subscriberList.isEmpty()) {
-                api = "register";
+                apis.add("register");
             }
+            apis.add("subscribe");
 
-            JSONObject response = new Call<JSONObject>().url(GWConfig.getRegistryUrl() + "/" + api).method(HttpMethod.POST).input(subscriber.getInner()).inputFormat(InputFormat.JSON).
-                    header("Content-Type", MimeType.APPLICATION_JSON.toString()).
-                    header("Accept", MimeType.APPLICATION_JSON.toString()).
-                    header("Authorization", request.generateAuthorizationHeader(GWConfig.getSubscriberId(), GWConfig.getPublicKeyId())).
-                    getResponseAsJson();
+
+            for (String api : apis) {
+                Call<JSONObject> call = new Call<JSONObject>().url(GWConfig.getRegistryUrl() + "/" + api).method(HttpMethod.POST).input(subscriber.getInner()).inputFormat(InputFormat.JSON).
+                        header("Content-Type", MimeType.APPLICATION_JSON.toString()).
+                        header("Accept", MimeType.APPLICATION_JSON.toString());
+                if (api.equals("subscribe")) {
+                    call.header("Authorization", request.generateAuthorizationHeader(GWConfig.getSubscriberId(), GWConfig.getPublicKeyId()));
+                }
+                JSONObject response = call.getResponseAsJson();
+            }
         }, false);
 
     }
