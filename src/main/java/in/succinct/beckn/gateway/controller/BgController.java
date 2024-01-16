@@ -52,6 +52,7 @@ import java.nio.file.AccessDeniedException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,10 +185,11 @@ public class    BgController extends Controller {
                     }
                 }
                 //* As the tasks are not critical, these are not persisted. Non persistence also gives speed. And Persistence requires tasks to be serializable.
+                Collections.shuffle(tasks);
                 TaskManager.instance().executeAsync(tasks,false); //Submit all async tasks.
                 BGEventEmitter.getInstance().log_request_processed(context,tasks.size());
                 return ack(request);
-            }else {
+            }else { 
                 return nack(request,request.getContext().getBapId());
             }
         }catch (Exception ex){
