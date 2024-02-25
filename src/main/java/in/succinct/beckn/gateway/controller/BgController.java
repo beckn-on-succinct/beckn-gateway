@@ -18,6 +18,9 @@ import com.venky.swf.plugins.background.core.Task;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.routing.Config;
+import com.venky.swf.sql.Expression;
+import com.venky.swf.sql.Operator;
+import com.venky.swf.sql.Select;
 import com.venky.swf.views.BytesView;
 import com.venky.swf.views.View;
 import in.succinct.beckn.Acknowledgement;
@@ -30,10 +33,16 @@ import in.succinct.beckn.Request;
 import in.succinct.beckn.Response;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.gateway.configuration.AppInstaller;
+import in.succinct.beckn.gateway.extensions.BecknPrivateKeyFinder;
 import in.succinct.beckn.gateway.extensions.BecknPublicKeyFinder;
 import in.succinct.beckn.gateway.util.BGEventEmitter;
 import in.succinct.beckn.gateway.util.ECEventEmitter;
 import in.succinct.beckn.gateway.util.GWConfig;
+import in.succinct.catalog.indexer.db.model.Provider;
+import in.succinct.catalog.indexer.ingest.CatalogDigester;
+import in.succinct.catalog.indexer.ingest.CatalogSearchEngine;
+import in.succinct.onet.core.adaptor.NetworkAdaptor;
+import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
@@ -56,12 +65,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 /**
  * Controllers in Succinct return Views that is serialized and sent as response.
  */
-public class    BgController extends Controller {
+@SuppressWarnings("unused")
+public class BgController extends Controller {
     public BgController(Path path) {
         super(path);
     }
@@ -117,7 +129,7 @@ public class    BgController extends Controller {
      * @param request
      * @return
      */
-    private Subscriber getCriteria(Request request) {
+    private static Subscriber getCriteria(Request request) {
         Subscriber criteria = new Subscriber();
         Context context = request.getContext();
         String countryCode = context.getCountry();
@@ -166,8 +178,10 @@ public class    BgController extends Controller {
 
                     /* lookup for bpps in the domain and city/country */
                     List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(criteria);
+
                     for (Subscriber subscriber : subscriberList){
                         /* For each subscriber submit an async task */
+                        //If subscriber is cached. Return from cache .
                         tasks.add(new Search(request,subscriber,getPath().getHeaders()));
                     }
                 }else if ("on_search".equals(request.getContext().getAction())){
@@ -175,13 +189,13 @@ public class    BgController extends Controller {
                     criteria.setType(Subscriber.SUBSCRIBER_TYPE_BAP);
                     if (!ObjectUtil.isVoid(context.getBapId())){
                         criteria.setSubscriberId(context.getBapId());
+                        /* For each subscriber submit an async task Will be only one, the BAP who fired the search*/
+                        List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(criteria);
+                        for (Subscriber subscriber : subscriberList){
+                            tasks.add(new OnSearch(request,subscriber,getPath().getHeaders()));
+                        }
                     }else  {
-                        throw new RuntimeException("BAP not known!");
-                    }
-                    /* For each subscriber submit an async task Will be only one, the BAP who fired the search*/
-                    List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(criteria);
-                    for (Subscriber subscriber : subscriberList){
-                        tasks.add(new OnSearch(request,subscriber,getPath().getHeaders()));
+                        tasks.add(new CatalogDigester(context,request.getMessage().getCatalog()));
                     }
                 }
                 //* As the tasks are not critical, these are not persisted. Non persistence also gives speed. And Persistence requires tasks to be serializable.
@@ -189,7 +203,7 @@ public class    BgController extends Controller {
                 TaskManager.instance().executeAsync(tasks,false); //Submit all async tasks.
                 BGEventEmitter.getInstance().log_request_processed(context,tasks.size());
                 return ack(request);
-            }else { 
+            }else {
                 return nack(request,request.getContext().getBapId());
             }
         }catch (Exception ex){
@@ -215,6 +229,7 @@ public class    BgController extends Controller {
      * @return the ACK/NACK response
      */
     @RequireLogin(false)
+
     public View search() {
         return act();
     }
@@ -227,7 +242,8 @@ public class    BgController extends Controller {
     public View on_search() {
         return act();
     }
-    protected static Map<String, String> getHeaders(Request request) {
+
+  protected static Map<String, String> getHeaders(Request request) {
         Map<String,String> headers  = new HashMap<>();
         if (GWConfig.isAuthorizationHeaderEnabled()) {
 
@@ -250,7 +266,10 @@ public class    BgController extends Controller {
         Request originalRequest;
         Subscriber bpp ;
         Map<String,String> headers;
+        NetworkAdaptor networkAdaptor;
+
         public Search(Request request, Subscriber bpp, Map<String, String> headers){
+            this.networkAdaptor = NetworkAdaptorFactory.getInstance().getAdaptor(Config.instance().getProperty("beckn.network.id","beckn_open"));;
             this.originalRequest = request;
             this.bpp = bpp;
             this.headers = headers;
@@ -268,24 +287,65 @@ public class    BgController extends Controller {
                 }
             }
             Request clone = new Request(originalRequest.toString());
-
-            Call<InputStream> call = new Call<InputStream>().url(bpp.getSubscriberUrl()+ "/"+clone.getContext().getAction()).
-                    method(HttpMethod.POST).inputFormat(InputFormat.INPUT_STREAM).timeOut(GWConfig.getTimeOut()).
-                    input(new ByteArrayInputStream(clone.toString().getBytes(StandardCharsets.UTF_8))).headers(getHeaders(clone));
-
-            if (headers != null && headers.containsKey("Authorization")){
-                call.header("Authorization",headers.get("Authorization"));
-            }
-            try {
-                if (call.hasErrors() && call.getStatus() > 500 ){
-                    disableBpp();
-                }
-            }catch (RuntimeException ex){
-                if (ExceptionUtil.getEmbeddedException(ex,HttpTimeoutException.class) != null && GWConfig.disableSlowBpp()){
-                    disableBpp();
-                }
-            }
             ecEventEmitter.emit(bpp,clone);
+
+            Select select = new Select("ID").from(Provider.class);
+            select.where(new Expression(select.getPool(),"SUBSCRIBER_ID", Operator.EQ, bpp.getSubscriberId()));
+            boolean catalogIndexedLocally  = select.execute(1).isEmpty();
+
+            List<Subscriber> allKeys = networkAdaptor.lookup(bpp.getSubscriberId(),true);
+            String bgPublicKey = Request.getPublicKey(GWConfig.getSubscriberId(),GWConfig.getPublicKeyId());
+
+            Optional<Subscriber> bppKeyMatchingBGPublicKey = allKeys.stream().filter(k->ObjectUtil.equals(k.getSigningPublicKey(), bgPublicKey)).findFirst();
+
+            if (catalogIndexedLocally && bppKeyMatchingBGPublicKey.isPresent()){
+                CatalogSearchEngine searchEngine = new CatalogSearchEngine(bpp);
+                Request response = new Request();
+                response.setContext(clone.getContext());
+                searchEngine.search(clone,response);
+                Request on_search = networkAdaptor.getObjectCreator(originalRequest.getContext().getDomain()).create(Request.class);
+                on_search.update(response);
+                Context context = response.getContext();
+                context.setAction("on_search");
+                context.setBppUri(bpp.getSubscriberUrl());
+                context.setBppId(bpp.getSubscriberId());
+
+                Subscriber criteria = getCriteria(response);
+                criteria.setType(Subscriber.SUBSCRIBER_TYPE_BAP);
+                if (!ObjectUtil.isVoid(context.getBapId())) {
+                    criteria.setSubscriberId(context.getBapId());
+                    /* For each subscriber submit an async task Will be only one, the BAP who fired the search*/
+                    List<Subscriber> bapList = BecknPublicKeyFinder.lookup(criteria);
+                    Subscriber overrideBpp = bppKeyMatchingBGPublicKey.get();
+
+                    for (Subscriber bap : bapList) {
+                        OnSearch onSearch = new OnSearch(response, bap, new HashMap<>(){{
+                            String authHeader = response.generateAuthorizationHeader(overrideBpp.getSubscriberId(),overrideBpp.getPubKeyId());
+                            put("Authorization", authHeader);
+                            put("Context-Type","application/json");
+                        }});
+                        onSearch.execute();
+                    }
+                }
+
+            }else {
+                Call<InputStream> call = new Call<InputStream>().url(bpp.getSubscriberUrl() + "/" + clone.getContext().getAction()).
+                        method(HttpMethod.POST).inputFormat(InputFormat.INPUT_STREAM).timeOut(GWConfig.getTimeOut()).
+                        input(new ByteArrayInputStream(clone.toString().getBytes(StandardCharsets.UTF_8))).headers(getHeaders(clone));
+
+                if (headers != null && headers.containsKey("Authorization")) {
+                    call.header("Authorization", headers.get("Authorization"));
+                }
+                try {
+                    if (call.hasErrors() && call.getStatus() > 500) {
+                        disableBpp();
+                    }
+                } catch (RuntimeException ex) {
+                    if (ExceptionUtil.getEmbeddedException(ex, HttpTimeoutException.class) != null && GWConfig.disableSlowBpp()) {
+                        disableBpp();
+                    }
+                }
+            }
         }
 
         public void disableBpp(){

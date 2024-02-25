@@ -77,6 +77,7 @@ public class AppInstaller implements Installer {
         subscriber.setValidFrom(signingKey.getUpdatedAt());
         subscriber.setSubscriberUrl(Config.instance().getServerBaseUrl()+"/bg");
         subscriber.setValidTo(new Date(signingKey.getUpdatedAt().getTime() + (long) (10L * 365.25D * 24L * 60L * 60L * 1000L)));
+        subscriber.setType(Subscriber.SUBSCRIBER_TYPE_BG);
         Request request = new Request(subscriber.getInner());
 
         TaskManager.instance().executeAsync((Task) () -> {
