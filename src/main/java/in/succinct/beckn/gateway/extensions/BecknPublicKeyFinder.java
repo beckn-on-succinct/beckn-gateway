@@ -12,6 +12,8 @@ import com.venky.swf.integration.api.InputFormat;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.gateway.util.GWConfig;
+import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
+import org.apache.lucene.index.DocIDMerger.Sub;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -73,28 +75,10 @@ public class BecknPublicKeyFinder implements Extension {
         }
 
 
-        JSONArray responses = new Call<JSONObject>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() +"/lookup").
-                input(subscriber.getInner()).inputFormat(InputFormat.JSON)
-                .header("content-type", MimeType.APPLICATION_JSON.toString())
-                .header("accept",MimeType.APPLICATION_JSON.toString()).getResponseAsJson();
-
-        if (responses == null) {
-            responses = new JSONArray();
-        }
-        for (Iterator<?> i = responses.iterator(); i.hasNext(); ) {
-            JSONObject object1 = (JSONObject) i.next();
-            if (!ObjectUtil.equals(object1.get("status"),"SUBSCRIBED")){
-                i.remove();
-            }
-        }
-
-
         entry = new CacheEntry();
         entry.expiry = System.currentTimeMillis() + TTL; // This TTL is to force refresh to get updated cache!.
-        entry.subscribers = new ArrayList<>();
-        for (Object o : responses){
-            entry.subscribers.add(new Subscriber((JSONObject) o));
-        }
+        entry.subscribers = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).lookup(subscriber,true);
+
         cache.put(key,entry);
         return entry.subscribers;
     }

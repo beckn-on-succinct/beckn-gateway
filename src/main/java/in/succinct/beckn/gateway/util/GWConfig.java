@@ -1,6 +1,14 @@
 package in.succinct.beckn.gateway.util;
 
+import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.routing.Config;
+import in.succinct.beckn.Request;
+import in.succinct.beckn.Subscriber;
+import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Date;
 
 /**
  * These are utility functions used to access properties defined across all swf.properties files.... These will be defined in the overrideProperties/config/swf.properties
@@ -22,30 +30,8 @@ public class GWConfig {
         return Config.instance().getProperty("in.succinct.beckn.gateway.public_key_id");
     }
 
-    /**
-     * get registry url from properties file
-     * @return registry url
-     */
-    public static String getRegistryUrl() {
-        return Config.instance().getProperty("in.succinct.beckn.registry.url");
-    }
 
-    /**
-     * get beckn registry's public key for signing
-     */
-    public static String getRegistrySigningPublicKey() {
-        return Config.instance().getProperty("in.succinct.beckn.registry.signing_public_key");
-    }
-
-
-    /**
-     * get beckn registry's public encryption key
-     */
-    public static String getRegistryEncryptionPublicKey() {
-        return Config.instance().getProperty("in.succinct.beckn.registry.encryption_public_key");
-    }
-
-    /**
+   /**
      *
      * Used to enable/disable Auth Header validations in this gateway. Note it doesnot affect how other participants validate these headers.
      */
@@ -65,4 +51,23 @@ public class GWConfig {
         return Config.instance().getLongProperty("beckn.network.timeout", 5 * 1000L);
     }
 
+    public static String getCountry(){
+        return Config.instance().getProperty("in.succinct.onet.country.iso.3","IND");
+    }
+    public static String getNetworkId(){
+        return Config.instance().getProperty("in.succinct.onet.name","beckn_open");
+    }
+
+
+    public static Subscriber getSubscriber(){
+        return new Subscriber(){{
+            setSubscriberId(GWConfig.getSubscriberId());
+            setNonce(Base64.getEncoder().encodeToString(String.valueOf(System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8)));
+            setUniqueKeyId(GWConfig.getPublicKeyId());
+            setCountry(GWConfig.getCountry());
+            setSubscriberUrl(Config.instance().getServerBaseUrl()+"/bg");
+            setType(Subscriber.SUBSCRIBER_TYPE_BG);
+            NetworkAdaptorFactory.getInstance().getAdaptor(getNetworkId()).getSubscriptionJson(this);
+        }};
+    }
 }

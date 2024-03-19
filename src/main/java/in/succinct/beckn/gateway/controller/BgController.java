@@ -293,7 +293,10 @@ public class BgController extends Controller {
             select.where(new Expression(select.getPool(),"SUBSCRIBER_ID", Operator.EQ, bpp.getSubscriberId()));
             boolean catalogIndexedLocally  = select.execute(1).isEmpty();
 
-            List<Subscriber> allKeys = networkAdaptor.lookup(bpp.getSubscriberId(),true);
+            List<Subscriber> allKeys = networkAdaptor.lookup(new Subscriber(){{
+                setSubscriberId(bpp.getSubscriberId());
+                setType(Subscriber.SUBSCRIBER_TYPE_BPP);
+            }},true);
             String bgPublicKey = Request.getPublicKey(GWConfig.getSubscriberId(),GWConfig.getPublicKeyId());
 
             Optional<Subscriber> bppKeyMatchingBGPublicKey = allKeys.stream().filter(k->ObjectUtil.equals(k.getSigningPublicKey(), bgPublicKey)).findFirst();
@@ -349,9 +352,11 @@ public class BgController extends Controller {
         }
 
         public void disableBpp(){
+            Subscriber registry = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).getRegistry();
+
             Request clone = new Request(bpp.toString());
             Map<String,String> headers = getHeaders(clone);
-            new Call<InputStream>().method(HttpMethod.POST).url(GWConfig.getRegistryUrl() ,"/disable").
+            new Call<InputStream>().method(HttpMethod.POST).url(registry.getSubscriberUrl() ,"/disable").
                     input(new ByteArrayInputStream(clone.toString().getBytes(StandardCharsets.UTF_8))).inputFormat(InputFormat.INPUT_STREAM).headers(headers).hasErrors();
         }
 
@@ -395,18 +400,19 @@ public class BgController extends Controller {
     @RequireLogin(value = false)
     @SuppressWarnings("unchecked")
     public View on_subscribe() throws Exception{
+        NetworkAdaptor networkAdaptor = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId());
         String payload = StringUtil.read(getPath().getInputStream());
         JSONObject object = (JSONObject) JSONValue.parse(payload);
 
 
-        if (!Request.verifySignature(getPath().getHeader("Signature"), payload, GWConfig.getRegistrySigningPublicKey())){
+        if (!Request.verifySignature(getPath().getHeader("Signature"), payload, networkAdaptor.getRegistry().getSigningPublicKey())){
             throw new RuntimeException("Cannot verify Signature");
         }
 
         PrivateKey privateKey = Crypt.getInstance().getPrivateKey(Request.ENCRYPTION_ALGO,
                 CryptoKey.find(GWConfig.getPublicKeyId(),CryptoKey.PURPOSE_ENCRYPTION).getPrivateKey());
 
-        PublicKey registryPublicKey = Request.getEncryptionPublicKey(GWConfig.getRegistryEncryptionPublicKey());
+        PublicKey registryPublicKey = Request.getEncryptionPublicKey(networkAdaptor.getRegistry().getEncrPublicKey());
 
         KeyAgreement agreement = KeyAgreement.getInstance(Request.ENCRYPTION_ALGO);
         agreement.init(privateKey);
