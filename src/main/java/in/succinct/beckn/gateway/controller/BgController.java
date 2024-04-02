@@ -269,7 +269,7 @@ public class BgController extends Controller {
         NetworkAdaptor networkAdaptor;
 
         public Search(Request request, Subscriber bpp, Map<String, String> headers){
-            this.networkAdaptor = NetworkAdaptorFactory.getInstance().getAdaptor(Config.instance().getProperty("beckn.network.id","beckn_open"));;
+            this.networkAdaptor = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId());
             this.originalRequest = request;
             this.bpp = bpp;
             this.headers = headers;
