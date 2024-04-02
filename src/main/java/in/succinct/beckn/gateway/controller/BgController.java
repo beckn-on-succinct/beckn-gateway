@@ -340,7 +340,7 @@ public class BgController extends Controller {
                     call.header("Authorization", headers.get("Authorization"));
                 }
                 try {
-                    if (call.hasErrors() && call.getStatus() > 500) {
+                    if (call.hasErrors() && call.getStatus() > 500 && GWConfig.disableSlowBpp()) {
                         disableBpp();
                     }
                 } catch (RuntimeException ex) {
