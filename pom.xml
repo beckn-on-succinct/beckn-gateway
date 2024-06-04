@@ -30,16 +30,6 @@
         <version>LATEST</version>
         <scope>test</scope>
     </dependency>
-      <dependency>
-          <groupId>com.github.venkatramanm.swf-all</groupId>
-          <artifactId>swf-plugin-collab</artifactId>
-          <version>[${revision},)</version>
-      </dependency>
-        <dependency>
-            <groupId>in.succinct.beckn</groupId>
-            <artifactId>sdk</artifactId>
-            <version>[1.2,)</version>
-        </dependency>
         <dependency>
             <groupId>in.succinct</groupId>
             <artifactId>catalog.indexer</artifactId>
