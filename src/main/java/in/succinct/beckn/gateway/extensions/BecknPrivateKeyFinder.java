@@ -23,7 +23,7 @@ public class BecknPrivateKeyFinder implements Extension {
         String subscriber_id = (String)context[0];
         String uniqueKeyId = (String)context[1];
         ObjectHolder<String> privateKeyHolder = (ObjectHolder<String>) context[2];
-        CryptoKey key = CryptoKey.find(GWConfig.getPublicKeyId(),CryptoKey.PURPOSE_SIGNING);
+        CryptoKey key = CryptoKey.find(uniqueKeyId,CryptoKey.PURPOSE_SIGNING);
         if (!key.getRawRecord().isNewRecord()){
             privateKeyHolder.set(key.getPrivateKey());
         }

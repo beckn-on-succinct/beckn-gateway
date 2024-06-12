@@ -1,25 +1,13 @@
 package in.succinct.beckn.gateway.extensions;
 
-import com.venky.cache.Cache;
 import com.venky.core.util.ObjectHolder;
-import com.venky.core.util.ObjectUtil;
 import com.venky.extension.Extension;
 import com.venky.extension.Registry;
-import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
-import com.venky.swf.integration.api.Call;
-import com.venky.swf.integration.api.HttpMethod;
-import com.venky.swf.integration.api.InputFormat;
-import com.venky.swf.routing.Config;
 import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.gateway.util.GWConfig;
 import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
-import org.apache.lucene.index.DocIDMerger.Sub;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -42,6 +30,9 @@ public class BecknPublicKeyFinder implements Extension {
         String subscriber_id = (String)context[0];
         String uniqueKeyId = (String)context[1];
         ObjectHolder<String> publicKeyHolder = (ObjectHolder<String>) context[2];
+        if (publicKeyHolder.get() != null){
+            return;
+        }
 
         Subscriber subscriber = new Subscriber();
         subscriber.setSubscriberId(subscriber_id);

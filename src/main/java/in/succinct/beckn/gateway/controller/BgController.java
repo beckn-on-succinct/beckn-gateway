@@ -1,5 +1,6 @@
 package in.succinct.beckn.gateway.controller;
 
+import com.venky.core.collections.IgnoreCaseMap;
 import com.venky.core.security.Crypt;
 import com.venky.core.string.StringUtil;
 import com.venky.core.util.ExceptionUtil;
@@ -151,6 +152,7 @@ public class BgController extends Controller {
         Request request = null;
         try {
             request = new Request(StringUtil.read(getPath().getInputStream()));
+            request.setObjectCreator(NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).getObjectCreator(StringUtil.valueOf(request.getContext().getDomain())));
 
             List<CoreTask> tasks = new ArrayList<>();
             Config.instance().getLogger(getClass().getName()).info("Headers:" + getPath().getHeaders());
@@ -195,16 +197,34 @@ public class BgController extends Controller {
                    tasks.add(new Search(request,subscribersWithInternalCatalog,getPath().getHeaders(),true));
                 }else if ("on_search".equals(request.getContext().getAction())){
                     Subscriber criteria = getCriteria(request.getContext());
-                    criteria.setType(Subscriber.SUBSCRIBER_TYPE_BAP);
-                    if (!ObjectUtil.isVoid(context.getBapId())){
+                    IgnoreCaseMap<String> headers = new IgnoreCaseMap<>();
+                    headers.putAll(getPath().getHeaders());
+                    String bubbling = headers.getOrDefault("X-Bubbling","N");
+
+
+
+                    if (!ObjectUtil.isVoid(context.getBapId())) {
+                        criteria.setType(Subscriber.SUBSCRIBER_TYPE_BAP);
                         criteria.setSubscriberId(context.getBapId());
-                        /* For each subscriber submit an async task Will be only one, the BAP who fired the search*/
-                        List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(criteria);
-                        for (Subscriber subscriber : subscriberList){
-                            tasks.add(new OnSearch(request,subscriber,getPath().getHeaders()));
+                    }else {
+                        if (ObjectUtil.equals(bubbling,"Y")){
+                            //Coming from another BG.
+                            criteria.setSubscriberId(GWConfig.getSubscriberId());
                         }
-                    }else  {
-                        tasks.add(new CatalogDigester(context,request.getMessage().getCatalog()));
+                        criteria.setType(Subscriber.SUBSCRIBER_TYPE_BG);
+                    }
+                        /* For each subscriber submit an async task Will be only one, the BAP who fired the search*/
+                    List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(criteria);
+                    headers.put("X-Bubbling","Y");
+
+                    for (Subscriber subscriber : subscriberList){
+                        if (!ObjectUtil.equals(subscriber.getSubscriberId(),GWConfig.getSubscriberId())) {
+                            tasks.add(new OnSearch(request, subscriber, headers));
+                        }else {
+                            Request internal = new Request();
+                            internal.update(request);
+                            tasks.add(new CatalogDigester(internal.getContext(), internal.getMessage().getCatalog()));
+                        }
                     }
                 }
                 //* As the tasks are not critical, these are not persisted. Non persistence also gives speed. And Persistence requires tasks to be serializable.
