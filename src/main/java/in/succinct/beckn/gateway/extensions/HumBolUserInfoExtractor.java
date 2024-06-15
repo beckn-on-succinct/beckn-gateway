@@ -3,10 +3,8 @@ package in.succinct.beckn.gateway.extensions;
 import com.venky.extension.Registry;
 import com.venky.swf.controller.OidController.OIDProvider;
 import com.venky.swf.extensions.SocialLoginInfoExtractor;
-import com.venky.swf.integration.FormatHelper;
 import com.venky.swf.integration.JSON;
 import com.venky.swf.routing.Config;
-import com.venky.swf.routing.KeyCase;
 import org.apache.oltu.oauth2.client.response.OAuthResourceResponse;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -22,7 +20,7 @@ public class HumBolUserInfoExtractor extends SocialLoginInfoExtractor {
     @Override
     public JSONObject extractUserInfo(OIDProvider provider, OAuthResourceResponse resourceResponse) {
         JSONObject userInfo = (JSONObject) JSONValue.parse(new InputStreamReader(resourceResponse.getBodyAsInputStream()));
-        FormatHelper.instance(userInfo).change_key_case(KeyCase.SNAKE);
+        //FormatHelper.instance(userInfo).change_key_case(KeyCase.CAMEL,KeyCase.SNAKE);
         if (userInfo.containsKey("user")){
             userInfo = (JSONObject) userInfo.remove("user");
         }
