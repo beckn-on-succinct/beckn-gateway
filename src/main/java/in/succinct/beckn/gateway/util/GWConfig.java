@@ -1,14 +1,11 @@
 package in.succinct.beckn.gateway.util;
 
-import com.venky.swf.db.model.CryptoKey;
 import com.venky.swf.routing.Config;
-import in.succinct.beckn.Request;
 import in.succinct.beckn.Subscriber;
 import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Date;
 
 /**
  * These are utility functions used to access properties defined across all swf.properties files.... These will be defined in the overrideProperties/config/swf.properties
@@ -58,15 +55,17 @@ public class GWConfig {
         return Config.instance().getProperty("in.succinct.onet.name","beckn_open");
     }
 
-
     public static Subscriber getSubscriber(){
+        return getSubscriber(Subscriber.SUBSCRIBER_TYPE_BG);
+    }
+    public static Subscriber getSubscriber(String type){
         return new Subscriber(){{
             setSubscriberId(GWConfig.getSubscriberId());
             setNonce(Base64.getEncoder().encodeToString(String.valueOf(System.currentTimeMillis()).getBytes(StandardCharsets.UTF_8)));
             setUniqueKeyId(GWConfig.getPublicKeyId());
             setCountry(GWConfig.getCountry());
-            setSubscriberUrl(Config.instance().getServerBaseUrl()+"/bg");
-            setType(Subscriber.SUBSCRIBER_TYPE_BG);
+            setSubscriberUrl(Config.instance().getServerBaseUrl()+"/network");
+            setType(type);
             NetworkAdaptorFactory.getInstance().getAdaptor(getNetworkId()).getSubscriptionJson(this);
         }};
     }
