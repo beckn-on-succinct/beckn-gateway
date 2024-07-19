@@ -147,6 +147,7 @@ public class NetworkController extends Controller implements BapController, BppC
 
 
 
+    @RequireLogin(false)
     public View read_events(String messageId){
         final EventView eventView = new EventView(getPath());
         Tracker tracker = ResponseSynchronizer.getInstance().getTracker(messageId,false);
