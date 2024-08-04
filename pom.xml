@@ -30,11 +30,14 @@
         <version>LATEST</version>
         <scope>test</scope>
     </dependency>
+        <!-- was added for sign on  not needed if 
+        signed beckn.json can be used.
         <dependency>
             <groupId>in.succinct</groupId>
             <artifactId>id.core</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+        -->
         <dependency>
             <groupId>in.succinct</groupId>
             <artifactId>catalog.indexer</artifactId>

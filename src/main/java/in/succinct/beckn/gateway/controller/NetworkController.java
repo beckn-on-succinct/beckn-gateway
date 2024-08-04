@@ -408,6 +408,7 @@ public class NetworkController extends Controller implements BapController, BppC
         boolean internalCatalog ;
         Tracker tracker;
         public BppRequestTask(Tracker tracker , Subscriber from, Map<String,Subscriber> targetSubscriberMap, NetworkAdaptor networkAdaptor , Request request , Map<String,String> headers ,boolean internalCatalog){
+            this.tracker =tracker;
             this.from = from;
             this.targetSubscriberMap = targetSubscriberMap;
             this.networkAdaptor = networkAdaptor;
@@ -449,24 +450,25 @@ public class NetworkController extends Controller implements BapController, BppC
                 }
                 Request on_search = networkAdaptor.getObjectCreator(request.getContext().getDomain()).create(Request.class);
                 on_search.update(internalFormatResponse);
-                String auth = on_search.generateAuthorizationHeader(GWConfig.getSubscriberId(),GWConfig.getPublicKeyId());
+                if (!ObjectUtil.equals(from.getSubscriberId(),GWConfig.getSubscriberId())){
+                    String auth = on_search.generateAuthorizationHeader(GWConfig.getSubscriberId(), GWConfig.getPublicKeyId());
 
-                AsyncTaskManagerFactory.getInstance().addAll(new ArrayList<>(){{
-                    add((IOTask)()->{
-                        BecknApiCall call = BecknApiCall.build().url(from.getSubscriberUrl(),
-                                        on_search.getContext().getAction()).schema(networkAdaptor.getDomains().get(request.getContext().getDomain()).getSchemaURL()).
-                                headers(new HashMap<>() {{
-                                    put("Content-Type", "application/json");
-                                    put("Accept", "application/json");
-                                    put("X-Gateway-Authorization", auth);
-                                    put("Authorization", auth);
-                                }}).path("/" + on_search.getContext().getAction()).request(on_search).call();
-                    });
+                    AsyncTaskManagerFactory.getInstance().addAll(new ArrayList<>() {{
+                        add((IOTask) () -> {
+                            BecknApiCall call = BecknApiCall.build().url(from.getSubscriberUrl(),
+                                            on_search.getContext().getAction()).schema(networkAdaptor.getDomains().get(request.getContext().getDomain()).getSchemaURL()).
+                                    headers(new HashMap<>() {{
+                                        put("Content-Type", "application/json");
+                                        put("Accept", "application/json");
+                                        put("X-Gateway-Authorization", auth);
+                                        put("Authorization", auth);
+                                    }}).path("/" + on_search.getContext().getAction()).request(on_search).call();
+                        });
 
-                }});
-
-
-
+                    }});
+                }else {
+                    tracker.addResponse(on_search); //Shorting sending on_search to self.
+                }
             }
         }
         private void executeExternal() {
@@ -481,13 +483,10 @@ public class NetworkController extends Controller implements BapController, BppC
                     BecknApiCall call = BecknApiCall.build().url(to.getSubscriberUrl(),
                                     request.getContext().getAction()).schema(networkAdaptor.getDomains().get(request.getContext().getDomain()).getSchemaURL()).
                             headers(new HashMap<>() {{
-                                putAll(headers);
                                 put("Content-Type", "application/json");
                                 put("Accept", "application/json");
                                 put("X-Gateway-Authorization", auth);
-                                if (!containsKey("Authorization")) {
-                                    put("Authorization", auth);
-                                }
+                                put("Authorization",headers.getOrDefault("Authorization",auth));
                             }}).path("/" + request.getContext().getAction()).request(request).call();
 
                     if (call.hasErrors()) {
