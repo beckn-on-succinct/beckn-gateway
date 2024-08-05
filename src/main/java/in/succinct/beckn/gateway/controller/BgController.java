@@ -199,23 +199,16 @@ public class BgController extends Controller {
                     Subscriber criteria = getCriteria(request.getContext());
                     IgnoreCaseMap<String> headers = new IgnoreCaseMap<>();
                     headers.putAll(getPath().getHeaders());
-                    String bubbling = headers.getOrDefault("X-Bubbling","N");
-
-
 
                     if (!ObjectUtil.isVoid(context.getBapId())) {
                         criteria.setType(Subscriber.SUBSCRIBER_TYPE_BAP);
                         criteria.setSubscriberId(context.getBapId());
                     }else {
-                        if (ObjectUtil.equals(bubbling,"Y")){
-                            //Coming from another BG.
-                            criteria.setSubscriberId(GWConfig.getSubscriberId());
-                        }
+                        criteria.setSubscriberId(GWConfig.getSubscriberId());
                         criteria.setType(Subscriber.SUBSCRIBER_TYPE_BG);
                     }
                         /* For each subscriber submit an async task Will be only one, the BAP who fired the search*/
                     List<Subscriber> subscriberList = BecknPublicKeyFinder.lookup(criteria);
-                    headers.put("X-Bubbling","Y");
 
                     for (Subscriber subscriber : subscriberList){
                         if (!ObjectUtil.equals(subscriber.getSubscriberId(),GWConfig.getSubscriberId())) {

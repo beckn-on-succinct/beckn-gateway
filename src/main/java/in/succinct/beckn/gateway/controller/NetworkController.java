@@ -274,9 +274,16 @@ public class NetworkController extends Controller implements BapController, BppC
             if (!ObjectUtil.isVoid(context.getBapId())){
                 return getSubscribers(context,Subscriber.SUBSCRIBER_TYPE_BAP);
             }else {
+                return new ArrayList<>() {{
+                    add(GWConfig.getSubscriber());
+                }};
+                /*
                 return getNetworkAdaptor().lookup(new Subscriber(){{
                     setType(Subscriber.SUBSCRIBER_TYPE_BG);
+                    setSubscriberId(GWConfig.getSubscriberId());
                 }},true);
+
+                 */
             }
         }
         return null;
@@ -569,17 +576,8 @@ public class NetworkController extends Controller implements BapController, BppC
                 IgnoreCaseMap<String> headers = new IgnoreCaseMap<>();
                 headers.putAll(getPath().getHeaders());
 
-                boolean bubbling = isOnSearch && Database.getJdbcTypeHelper("").getTypeRef(boolean.class).getTypeConverter().valueOf(headers.getOrDefault("X-Bubbling","N"));
 
-                List<Subscriber> targetSubscribers ;
-                if (bubbling) {
-                    targetSubscribers = new ArrayList<>(){{
-                        add(GWConfig.getSubscriber());
-                    }};
-                } else {
-                    targetSubscribers = getTargets(request.getContext());
-                }
-                headers.put("X-Bubbling","Y");
+                List<Subscriber> targetSubscribers = getTargets(request.getContext());
 
                 List<Task> tasks= new ArrayList<>();
                 String auth = request.generateAuthorizationHeader(GWConfig.getSubscriberId(),GWConfig.getPublicKeyId());
