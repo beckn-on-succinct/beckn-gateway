@@ -334,7 +334,7 @@ public class NetworkController extends Controller implements BapController, BppC
             Tracker tracker = ResponseSynchronizer.getInstance().createTracker(request);
 
             tracker.start(request, isSearch? (ObjectUtil.isVoid(request.getContext().getBppId())?
-                    subscriberMap.size():1) : 1,
+                    subscriberMap.size() + subscribersWithInternalCatalog.size():1) : 1,
                     getPath().getHeader("SearchTransactionId"));
 
 
