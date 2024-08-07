@@ -172,7 +172,7 @@ public class NetworkController extends Controller implements BapController, BppC
                         try {
                             if (tracker.isComplete()) {
                                 ResponseSynchronizer.getInstance().closeTracker(messageId);
-                                eventView.write(String.format("{\"done\" : true , \"message_id\" : \"%s\"}",messageId));
+                                eventView.write(String.format("{\"done\" : true , \"message_id\" : \"%s\"}\n\n",messageId));
                             } else if (numResponsesReceived.intValue() == 0){
                                 tracker.registerListener(this);
                             }
