@@ -496,11 +496,11 @@ public class NetworkController extends Controller implements BapController, BppC
                                 put("Authorization",headers.getOrDefault("Authorization",auth));
                             }}).path("/" + request.getContext().getAction()).request(request).call();
 
-                    if (call.hasErrors()) {
-                        tracker.addResponse(null);
-                    }else if (call.getStatus() >= 500 && GWConfig.disableSlowBpp()){
+                    if (call.getStatus() >= 500 && GWConfig.disableSlowBpp()){
                         tracker.addResponse(null);
                         disableBpp(to);
+                    }else if (call.hasErrors()) {
+                        tracker.addResponse(null);
                     }else if (call.getResponse().getAcknowledgement().getStatus() == Status.NACK){
                         tracker.addResponse(null);
                     }
@@ -518,14 +518,13 @@ public class NetworkController extends Controller implements BapController, BppC
 
             new Call<InputStream>().method(HttpMethod.POST).url(registry.getSubscriberUrl() ,"/disable").
                     headers(new IgnoreCaseMap<>(){{
-                        putAll(headers);
                         put("Content-Type",MimeType.APPLICATION_JSON.toString());
                         if (auth != null) {
                             put("Authorization", auth);
                             put("Proxy-Authorization", auth);
                             put("X-Gateway-Authorization", auth);
                         }
-                    }}).input(new ByteArrayInputStream(payload.toString().getBytes(StandardCharsets.UTF_8))).inputFormat(InputFormat.INPUT_STREAM).headers(headers).hasErrors();
+                    }}).input(new ByteArrayInputStream(payload.toString().getBytes(StandardCharsets.UTF_8))).inputFormat(InputFormat.INPUT_STREAM).hasErrors();
         }
     }
 
