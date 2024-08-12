@@ -106,10 +106,7 @@ public class BgController extends Controller {
 
     @RequireLogin(value = false)
     public View log(long id) throws IOException{
-        if (!Config.instance().isDevelopmentEnvironment()){
-            throw new AccessDeniedException("You cannot view logs!");
-        }
-        return new BytesView(getPath(),StringUtil.readBytes(new FileInputStream(String.format("tmp/java_info0.log.%d",id)),true),MimeType.TEXT_PLAIN);
+        return super.info(id);
     }
 
     /**
