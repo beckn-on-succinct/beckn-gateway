@@ -1,6 +1,7 @@
 package in.succinct.beckn.gateway.controller;
 
 import com.venky.core.collections.IgnoreCaseMap;
+import com.venky.core.collections.SequenceSet;
 import com.venky.core.security.Crypt;
 import com.venky.core.string.StringUtil;
 import com.venky.core.util.Bucket;
@@ -73,8 +74,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -173,7 +176,7 @@ public class NetworkController extends Controller implements BapController, BppC
                             if (tracker.isComplete()) {
                                 ResponseSynchronizer.getInstance().closeTracker(messageId);
                                 eventView.write(String.format("{\"done\" : true , \"message_id\" : \"%s\"}\n\n",messageId));
-                            } else if (numResponsesReceived.intValue() == 0){
+                            } else {
                                 tracker.registerListener(this);
                             }
                         }catch (Exception ex){
@@ -301,6 +304,14 @@ public class NetworkController extends Controller implements BapController, BppC
         for (Provider tmpProvider : tmpProviders) {
             subscribersWithInternalCatalog.put(tmpProvider.getSubscriberId(),subscriberMap.remove(tmpProvider.getSubscriberId()));
         }
+        Set<String> remainingSubscriberIds = new HashSet<>(subscriberMap.keySet());
+        for (String subscriberId : remainingSubscriberIds) {
+            Subscriber subscriber = subscriberMap.get(subscriberId);
+            if (ObjectUtil.isVoid(subscriber.getSubscriberUrl())){
+                subscribersWithInternalCatalog.put(subscriberId,subscriberMap.remove(subscriberId));
+            }
+        }
+
         return subscribersWithInternalCatalog;
     }
     public View act(){

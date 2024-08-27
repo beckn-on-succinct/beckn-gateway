@@ -1,10 +1,12 @@
 package in.succinct.beckn.gateway.controller.proxies;
 
+import com.venky.core.string.StringUtil;
 import com.venky.core.util.Bucket;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.db.Database;
 import com.venky.swf.plugins.background.core.AsyncTaskManagerFactory;
 import com.venky.swf.plugins.background.eventloop.CoreEvent;
+import com.venky.swf.routing.Config;
 import in.succinct.beckn.Request;
 
 import java.util.Collections;
@@ -93,7 +95,8 @@ public class ResponseSynchronizer {
         boolean shutdown = false;
         Request request = null;
         CoreEvent listener = null;
-        ScheduledFuture<?> keepAliveTrigger = null;
+        //ScheduledFuture<?> keepAliveTrigger = null;
+        // this is an over kill, we notify on message receipt and on shutdown thats enough.
         ScheduledFuture<?> shutDownTrigger = null;
         String searchTransactionId = null;
 
@@ -107,9 +110,9 @@ public class ResponseSynchronizer {
                     this.end = this.start + request.getContext().getTtl() * 1000L;
                     this.pendingResponses = new Bucket(maxResponses);
                     this.request = request;
-                    this.keepAliveTrigger = service.scheduleWithFixedDelay(()->{
+                    /*this.keepAliveTrigger = service.scheduleWithFixedDelay(()->{
                         notifyListener();
-                    },5000L,10000L ,TimeUnit.MILLISECONDS);
+                    },5000L,10000L ,TimeUnit.MILLISECONDS);*/
                     this.shutDownTrigger = service.schedule(()->{
                         shutdown();
                     },request.getContext().getTtl() *1000L,TimeUnit.MILLISECONDS);
@@ -122,7 +125,9 @@ public class ResponseSynchronizer {
 
         @SuppressWarnings("unchecked")
         public void addResponse(Request response){
+            Config.instance().getLogger(getClass().getName()).info(String.format("Received Response|%s|\n" , StringUtil.valueOf(response)));
             synchronized (this) {
+                Config.instance().getLogger(getClass().getName()).info(String.format("Acquired Lock|%s|\n" , StringUtil.valueOf(response)));
                 boolean unsolicited = !isStarted();
                 if (this.pendingResponses != null){
                     this.pendingResponses.decrement();
@@ -156,8 +161,11 @@ public class ResponseSynchronizer {
         }
 
         public Request nextResponse(){
+            Config.instance().getLogger(getClass().getName()).info("Checking next Response");
             synchronized (this) {
+                Config.instance().getLogger(getClass().getName()).info("Acquired Lock before checking response");
                 if (!responses.isEmpty()) {
+                    Config.instance().getLogger(getClass().getName()).info("Returning locked Response");
                     return responses.removeFirst();
                 }
             }
@@ -168,9 +176,10 @@ public class ResponseSynchronizer {
         public void shutdown(){
             synchronized (this) {
                 this.shutdown = true;
+                /*
                 if (this.keepAliveTrigger != null && !this.keepAliveTrigger.isCancelled()) {
                     this.keepAliveTrigger.cancel(false);
-                }
+                }*/
                 if (this.shutDownTrigger != null && !this.shutDownTrigger.isCancelled()) {
                     this.shutDownTrigger.cancel(false);
                 }
@@ -187,8 +196,11 @@ public class ResponseSynchronizer {
         public void notifyListener() {
             synchronized (this) {
                 if (listener != null) {
+                    Config.instance().getLogger(getClass().getName()).info("Notifying Listener");
                     AsyncTaskManagerFactory.getInstance().addAll(Collections.singleton(listener));
                     listener = null;
+                }else {
+                    Config.instance().getLogger(getClass().getName()).info("No Listener");
                 }
             }
         }
