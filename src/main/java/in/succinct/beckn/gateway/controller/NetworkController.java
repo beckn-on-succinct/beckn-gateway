@@ -19,6 +19,7 @@ import com.venky.swf.path.Path;
 import com.venky.swf.plugins.background.core.AsyncTaskManagerFactory;
 import com.venky.swf.plugins.background.core.IOTask;
 import com.venky.swf.plugins.background.core.Task;
+import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.plugins.background.eventloop.CoreEvent;
 import com.venky.swf.plugins.beckn.tasks.BecknApiCall;
 import com.venky.swf.routing.Config;
@@ -349,14 +350,16 @@ public class NetworkController extends Controller implements BapController, BppC
                     getPath().getHeader("SearchTransactionId"));
 
 
-            AsyncTaskManagerFactory.getInstance().addAll(new ArrayList<>(){{
+            //AsyncTaskManagerFactory.getInstance().addAll(
+            TaskManager.instance().executeAsync(new ArrayList<>(){{
                 if (!subscriberMap.isEmpty()) {
                     add(new BppRequestTask(tracker, source, subscriberMap, networkAdaptor, request, headers, false));
                 }
                 if (!subscribersWithInternalCatalog.isEmpty()) {
                     add(new BppRequestTask(tracker, source, subscribersWithInternalCatalog, networkAdaptor, request, headers, true));
                 }
-            }});
+            }},false);
+
 
             boolean callBackToBeSynchronized = Database.getJdbcTypeHelper("").getTypeRef(boolean.class).getTypeConverter().valueOf(getPath().getHeader("X-CallBackToBeSynchronized"));
             if (!callBackToBeSynchronized) {
