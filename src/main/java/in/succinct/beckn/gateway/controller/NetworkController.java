@@ -55,6 +55,7 @@ import in.succinct.catalog.indexer.db.model.Provider;
 import in.succinct.catalog.indexer.ingest.CatalogDigester;
 import in.succinct.catalog.indexer.ingest.CatalogSearchEngine;
 import in.succinct.onet.core.adaptor.NetworkAdaptor;
+import in.succinct.onet.core.adaptor.NetworkAdaptor.Domain;
 import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -502,8 +503,17 @@ public class NetworkController extends Controller implements BapController, BppC
                 Subscriber to = targetSubscriberMap.get(subscriberId);
                 tasks.add((IOTask)()->{
                     BecknApiCall call = BecknApiCall.build().url(to.getSubscriberUrl(),
-                                    request.getContext().getAction()).schema(networkAdaptor.getDomains().get(request.getContext().getDomain()).getSchemaURL()).
-                            headers(new HashMap<>() {{
+                                    request.getContext().getAction());
+                    Domain domain = null;
+                    if (!ObjectUtil.isVoid(request.getContext().getDomain())){
+                        domain = networkAdaptor.getDomains().get(request.getContext().getDomain());
+                    }else if (!networkAdaptor.getDomains().isEmpty()){
+                        domain = networkAdaptor.getDomains().get(0);
+                    }
+                    if (domain != null) {
+                        call.schema(domain.getSchemaURL());
+                    }
+                    call.headers(new HashMap<>() {{
                                 put("Content-Type", "application/json");
                                 put("Accept", "application/json");
                                 put("X-Gateway-Authorization", auth);

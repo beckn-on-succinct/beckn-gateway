@@ -150,7 +150,9 @@ public class ResponseSynchronizer {
 
         private boolean isResponsesCollected(){
             synchronized (this) {
-                return shutdown || (start > 0 && (end < System.currentTimeMillis())) || (pendingResponses != null && pendingResponses.intValue() <= 0);
+                long now = System.currentTimeMillis();
+                Config.instance().getLogger(getClass().getName()).info("Shutdown:%b\n start: %d\n end: %d\n currentTime : %d\n".formatted(shutdown,start,end,now));
+                return shutdown || (start > 0 && (end < now)) || (pendingResponses != null && pendingResponses.intValue() <= 0);
             }
         }
 
