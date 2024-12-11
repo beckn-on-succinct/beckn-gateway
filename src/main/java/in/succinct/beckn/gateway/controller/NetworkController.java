@@ -698,6 +698,6 @@ public class NetworkController extends Controller implements BapController, BppC
     
     @Override
     public View status() {
-        return act();
+        return BppController.super.status();
     }
 }
