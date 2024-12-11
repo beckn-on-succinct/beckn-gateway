@@ -695,4 +695,9 @@ public class NetworkController extends Controller implements BapController, BppC
         SecretKey key = agreement.generateSecret("TlsPremasterSecret");
         return Crypt.getInstance().decrypt(challenge,"AES",key);
     }
+    
+    @Override
+    public View status() {
+        return act();
+    }
 }
