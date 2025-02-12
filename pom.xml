@@ -51,7 +51,7 @@
         <dependency>
             <groupId>com.github.venkatramanm.swf-all</groupId>
             <artifactId>swf-plugin-beckn</artifactId>
-            <version>2.13-SNAPSHOT</version>
+            <version>2.14-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>
