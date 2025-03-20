@@ -93,15 +93,6 @@ public class NetworkController extends Controller implements BapController, BppC
         return new BytesView(getPath(),response.toString().getBytes(StandardCharsets.UTF_8), MimeType.APPLICATION_JSON);
     }
 
-    protected View no_content(){
-        return new BytesView(getPath(),new byte[]{},MimeType.APPLICATION_JSON){
-            @Override
-            public void write() throws IOException {
-                super.write(HttpServletResponse.SC_NO_CONTENT);
-            }
-        };
-    }
-
     protected Response nack(Throwable th){
         Response response = new Response(new Acknowledgement(Status.NACK));
         if (th != null){
