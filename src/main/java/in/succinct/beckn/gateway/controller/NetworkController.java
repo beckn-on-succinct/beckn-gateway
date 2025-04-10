@@ -514,6 +514,9 @@ public class NetworkController extends Controller implements BapController, BppC
                                 put("Accept", "application/json");
                                 put("X-Gateway-Authorization", auth);
                                 put("Authorization",headers.getOrDefault("Authorization",auth));
+                                if (headers.containsKey("ApiKey") || headers.containsKey("X-ApiKey")){
+                                    put("ApiKey",headers.getOrDefault("ApiKey",headers.get("X-ApiKey")));
+                                }
                             }}).path("/" + request.getContext().getAction()).request(request).call();
 
                     if (call.getStatus() >= 500 && GWConfig.disableSlowBpp()){
