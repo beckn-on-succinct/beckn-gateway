@@ -140,6 +140,11 @@ public class NetworkController extends Controller implements BapController, BppC
     public NetworkAdaptor getNetworkAdaptor() {
         return NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId());
     }
+    
+    public View clear(){
+        getNetworkAdaptor().clearLookupCache();
+        return no_content();
+    }
 
 
 
