@@ -397,7 +397,7 @@ public class NetworkController extends Controller implements BapController, BppC
 
                     @Override
                     public boolean isReady() {
-                        return super.isReady() &&  tracker.isComplete() ;
+                        return super.isReady() && ( !tracker.isBeingObserved() || tracker.isComplete()); //Clients will auto reconnect.
                     }
                 });
                 return new NoContentView(getPath()); //Request is kept open
