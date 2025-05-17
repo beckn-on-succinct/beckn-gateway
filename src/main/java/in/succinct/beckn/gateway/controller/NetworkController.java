@@ -372,10 +372,10 @@ public class NetworkController extends Controller implements BapController, BppC
                     {
                         tracker.registerListener(this);
                     }
+                    final Requests requests = new Requests();
                     @Override
                     public void execute() {
                         super.execute();
-                        Requests requests = new Requests();
                         Request response ;
                         synchronized (tracker) {
                             while ((response = tracker.nextResponse()) != null) {
