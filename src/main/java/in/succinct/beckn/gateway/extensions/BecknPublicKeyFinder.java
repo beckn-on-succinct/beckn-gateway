@@ -68,7 +68,7 @@ public class BecknPublicKeyFinder implements Extension {
 
         entry = new CacheEntry();
         entry.expiry = System.currentTimeMillis() + TTL; // This TTL is to force refresh to get updated cache!.
-        entry.subscribers = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).lookup(subscriber,true);
+        entry.subscribers = NetworkAdaptorFactory.getInstance().getAdaptor().lookup(subscriber,true);
 
         cache.put(key,entry);
         return entry.subscribers;

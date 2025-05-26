@@ -67,8 +67,8 @@ public class AppInstaller implements Installer {
      */
     public static void registerBecknKeys() {
         TaskManager.instance().executeAsync((Task) () -> {
-            NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).subscribe(GWConfig.getSubscriber());
-            NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).subscribe(GWConfig.getSubscriber(Subscriber.SUBSCRIBER_TYPE_BAP));
+            NetworkAdaptorFactory.getInstance().getAdaptor().subscribe(GWConfig.getSubscriber());
+            NetworkAdaptorFactory.getInstance().getAdaptor().subscribe(GWConfig.getSubscriber(Subscriber.SUBSCRIBER_TYPE_BAP));
         }, false);
 
     }

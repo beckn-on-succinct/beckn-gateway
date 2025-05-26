@@ -53,14 +53,12 @@ import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AccessDeniedException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
@@ -149,7 +147,7 @@ public class BgController extends Controller {
         Request request = null;
         try {
             request = new Request(StringUtil.read(getPath().getInputStream()));
-            request.setObjectCreator(NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).getObjectCreator(StringUtil.valueOf(request.getContext().getDomain())));
+            request.setObjectCreator(NetworkAdaptorFactory.getInstance().getAdaptor().getObjectCreator(StringUtil.valueOf(request.getContext().getDomain())));
 
             List<CoreTask> tasks = new ArrayList<>();
             Config.instance().getLogger(getClass().getName()).info("Headers:" + getPath().getHeaders());
@@ -295,7 +293,7 @@ public class BgController extends Controller {
             }},headers,false);
         }
         public Search(Request request, Map<String, Subscriber> subscriberMap, Map<String, String> headers,boolean internalCatalog){
-            this.networkAdaptor = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId());
+            this.networkAdaptor = NetworkAdaptorFactory.getInstance().getAdaptor();
             this.originalRequest = request;
             this.subscriberMap = subscriberMap;
             this.headers = headers;
@@ -338,7 +336,7 @@ public class BgController extends Controller {
                     return;
                 }
 
-                originalRequest.setObjectCreator(NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).
+                originalRequest.setObjectCreator(NetworkAdaptorFactory.getInstance().getAdaptor().
                         getObjectCreator(originalRequest.getContext().getDomain()));
                 Request internalFormatRequest = new Request();
                 internalFormatRequest.update(originalRequest);
@@ -388,7 +386,7 @@ public class BgController extends Controller {
         }
 
         public void disableBpp(Subscriber bpp){
-            Subscriber registry = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).getRegistry();
+            Subscriber registry = NetworkAdaptorFactory.getInstance().getAdaptor().getRegistry();
 
             Request payload = new Request(bpp.toString());
             Map<String,String> headers = getHeaders(payload);
@@ -435,7 +433,7 @@ public class BgController extends Controller {
     @RequireLogin(value = false)
     @SuppressWarnings("unchecked")
     public View on_subscribe() throws Exception{
-        NetworkAdaptor networkAdaptor = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId());
+        NetworkAdaptor networkAdaptor = NetworkAdaptorFactory.getInstance().getAdaptor();
         String payload = StringUtil.read(getPath().getInputStream());
         JSONObject object = (JSONObject) JSONValue.parse(payload);
 

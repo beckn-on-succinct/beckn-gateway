@@ -1,7 +1,6 @@
 package in.succinct.beckn.gateway.controller;
 
 import com.venky.core.collections.IgnoreCaseMap;
-import com.venky.core.collections.SequenceSet;
 import com.venky.core.security.Crypt;
 import com.venky.core.string.StringUtil;
 import com.venky.core.util.Bucket;
@@ -138,7 +137,7 @@ public class NetworkController extends Controller implements BapController, BppC
 
 
     public NetworkAdaptor getNetworkAdaptor() {
-        return NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId());
+        return NetworkAdaptorFactory.getInstance().getAdaptor();
     }
     
     public View clear(){
@@ -539,7 +538,7 @@ public class NetworkController extends Controller implements BapController, BppC
         }
 
         public void disableBpp(Subscriber bpp){
-            Subscriber registry = NetworkAdaptorFactory.getInstance().getAdaptor(GWConfig.getNetworkId()).getRegistry();
+            Subscriber registry = NetworkAdaptorFactory.getInstance().getAdaptor().getRegistry();
 
             Request payload = new Request(bpp.toString());
             String auth = GWConfig.isAuthorizationHeaderEnabled() ?payload.generateAuthorizationHeader(GWConfig.getSubscriberId(),GWConfig.getPublicKeyId()) : null;

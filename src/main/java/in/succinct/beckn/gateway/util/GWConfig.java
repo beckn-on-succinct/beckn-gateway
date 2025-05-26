@@ -51,9 +51,6 @@ public class GWConfig {
     public static String getCountry(){
         return Config.instance().getProperty("in.succinct.onet.country.iso.3","IND");
     }
-    public static String getNetworkId(){
-        return Config.instance().getProperty("in.succinct.onet.name","beckn_open");
-    }
 
     public static Subscriber getSubscriber(){
         return getSubscriber(Subscriber.SUBSCRIBER_TYPE_BG);
@@ -66,7 +63,7 @@ public class GWConfig {
             setCountry(GWConfig.getCountry());
             setSubscriberUrl(Config.instance().getServerBaseUrl()+"/network");
             setType(type);
-            NetworkAdaptorFactory.getInstance().getAdaptor(getNetworkId()).getSubscriptionJson(this);
+            NetworkAdaptorFactory.getInstance().getAdaptor().getSubscriptionJson(this);
         }};
     }
 }
