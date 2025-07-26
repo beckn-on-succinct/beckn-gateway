@@ -10,6 +10,7 @@ import com.venky.swf.controller.annotations.RequireLogin;
 import com.venky.swf.db.Database;
 import com.venky.swf.db.annotations.column.ui.mimes.MimeType;
 import com.venky.swf.db.model.CryptoKey;
+import com.venky.swf.db.model.application.Event;
 import com.venky.swf.db.model.reflection.ModelReflector;
 import com.venky.swf.integration.api.Call;
 import com.venky.swf.integration.api.HttpMethod;
@@ -530,7 +531,12 @@ public class NetworkController extends Controller implements BapController, BppC
                         tracker.addResponse(null);
                     }else if (call.getResponse().getAcknowledgement().getStatus() == Status.NACK){
                         tracker.addResponse(null);
+                    }else {
+                        if (ObjectUtil.equals(request.getContext().getAction(),"confirm")) {
+                            Event.find("/" + request.getContext().getAction()).raise(request);//Request sent to bpp successfully.
+                        }
                     }
+                    
                 });
             }
             AsyncTaskManagerFactory.getInstance().addAll(tasks);
