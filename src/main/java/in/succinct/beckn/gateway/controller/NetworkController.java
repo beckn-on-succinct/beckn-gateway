@@ -46,6 +46,7 @@ import in.succinct.beckn.SellerException.GenericBusinessError;
 import in.succinct.beckn.SellerException.InvalidRequestError;
 import in.succinct.beckn.SellerException.InvalidSignature;
 import in.succinct.beckn.Subscriber;
+import in.succinct.beckn.VisibilityEvent;
 import in.succinct.beckn.gateway.controller.proxies.BapController;
 import in.succinct.beckn.gateway.controller.proxies.BppController;
 import in.succinct.beckn.gateway.controller.proxies.ResponseSynchronizer;
@@ -435,8 +436,7 @@ public class NetworkController extends Controller implements BapController, BppC
             this.from = from;
             this.targetSubscriberMap = targetSubscriberMap;
             this.networkAdaptor = networkAdaptor;
-            this.request = networkAdaptor.getObjectCreator(request.getContext().getDomain()).create(Request.class);
-            this.request.update(request);
+            this.request = request;
             this.headers = headers == null ? new IgnoreCaseMap<>() : headers;
             this.internalCatalog = internalCatalog;
         }
@@ -533,7 +533,10 @@ public class NetworkController extends Controller implements BapController, BppC
                         tracker.addResponse(null);
                     }else {
                         if (ObjectUtil.equals(request.getContext().getAction(),"confirm")) {
-                            Event.find("/" + request.getContext().getAction()).raise(request);//Request sent to bpp successfully.
+                            Event.find("/" + request.getContext().getAction()).raise(new VisibilityEvent(){{
+                                setRequest(request);
+                                setHeaders(new Headers(call.getHeaders()));
+                            }});//Request sent to bpp successfully.
                         }
                     }
                     
