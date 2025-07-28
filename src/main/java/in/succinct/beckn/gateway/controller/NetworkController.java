@@ -522,8 +522,10 @@ public class NetworkController extends Controller implements BapController, BppC
                                 if (headers.containsKey("ApiKey") || headers.containsKey("X-ApiKey")){
                                     put("ApiKey",headers.getOrDefault("ApiKey",headers.get("X-ApiKey")));
                                 }
-                            }}).path("/" + request.getContext().getAction()).request(request).call();
+                            }}).path("/" + request.getContext().getAction()).request(request);
 
+                    raiseEvent(request,call.getHeaders());
+                    call.call();
                     if (call.getStatus() >= 500 && GWConfig.disableSlowBpp()){
                         tracker.addResponse(null);
                         disableBpp(to);
@@ -531,14 +533,8 @@ public class NetworkController extends Controller implements BapController, BppC
                         tracker.addResponse(null);
                     }else if (call.getResponse().getAcknowledgement().getStatus() == Status.NACK){
                         tracker.addResponse(null);
-                    }else {
-                        if (ObjectUtil.equals(request.getContext().getAction(),"confirm")) {
-                            Event.find("/" + request.getContext().getAction()).raise(new VisibilityEvent(){{
-                                setRequest(request);
-                                setHeaders(new Headers(call.getHeaders()));
-                            }});//Request sent to bpp successfully.
-                        }
                     }
+                    
                     
                 });
             }
@@ -595,7 +591,7 @@ public class NetworkController extends Controller implements BapController, BppC
         if (ObjectUtil.isVoid(context.getMessageId())) {
             context.setMessageId(UUID.randomUUID().toString());
         }
-
+        request.setPayload(request.getInner().toString());
     }
 
     public View on_act(){
@@ -645,6 +641,9 @@ public class NetworkController extends Controller implements BapController, BppC
                         });
                     }
                 }
+                tasks.add((Task) () -> {
+                    raiseEvent(request,headers);
+                });
                 AsyncTaskManagerFactory.getInstance().addAll(tasks);
             }
             return ack(request);
@@ -655,6 +654,15 @@ public class NetworkController extends Controller implements BapController, BppC
         }
     }
 
+    public static void raiseEvent(Request request, Map<String, String> headers){
+        Event event = Event.find("/" + request.getContext().getAction());
+        if (event != null) {
+            event.raise(new VisibilityEvent() {{
+                setRequest(request);
+                setHeaders(new Headers(headers));
+            }});//Request sent to bpp successfully.
+        }
+    }
 
     public View subscribe() {
         getNetworkAdaptor().subscribe(GWConfig.getSubscriber());
