@@ -17,17 +17,18 @@ import com.venky.swf.integration.api.HttpMethod;
 import com.venky.swf.integration.api.InputFormat;
 import com.venky.swf.path.Path;
 import com.venky.swf.plugins.background.core.AsyncTaskManagerFactory;
-import com.venky.swf.plugins.background.core.IOTask;
+import com.venky.swf.plugins.background.core.CoreTask;
 import com.venky.swf.plugins.background.core.Task;
 import com.venky.swf.plugins.background.core.TaskManager;
-import com.venky.swf.plugins.background.eventloop.CoreEvent;
 import com.venky.swf.plugins.beckn.tasks.BecknApiCall;
 import com.venky.swf.routing.Config;
 import com.venky.swf.sql.Expression;
 import com.venky.swf.sql.Operator;
 import com.venky.swf.sql.Select;
 import com.venky.swf.views.BytesView;
+import com.venky.swf.views.DelayedView;
 import com.venky.swf.views.EventView;
+import com.venky.swf.views.ForwardedView;
 import com.venky.swf.views.NoContentView;
 import com.venky.swf.views.View;
 import in.succinct.beckn.Acknowledgement;
@@ -51,6 +52,7 @@ import in.succinct.beckn.gateway.controller.proxies.BapController;
 import in.succinct.beckn.gateway.controller.proxies.BppController;
 import in.succinct.beckn.gateway.controller.proxies.ResponseSynchronizer;
 import in.succinct.beckn.gateway.controller.proxies.ResponseSynchronizer.Tracker;
+import in.succinct.beckn.gateway.tasks.ResponseCollector;
 import in.succinct.beckn.gateway.util.GWConfig;
 import in.succinct.catalog.indexer.db.model.Provider;
 import in.succinct.catalog.indexer.ingest.CatalogDigester;
@@ -58,13 +60,13 @@ import in.succinct.catalog.indexer.ingest.CatalogSearchEngine;
 import in.succinct.onet.core.adaptor.NetworkAdaptor;
 import in.succinct.onet.core.adaptor.NetworkAdaptor.Domain;
 import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
+import org.eclipse.jetty.http.HttpStatus;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
-import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -128,9 +130,9 @@ public class NetworkController extends Controller implements BapController, BppC
             @Override
             public void write() throws IOException {
                 if (th instanceof InvalidSignature){
-                    super.write(HttpServletResponse.SC_UNAUTHORIZED);
+                    super.write(HttpStatus.UNAUTHORIZED_401);
                 }else {
-                    super.write(HttpServletResponse.SC_BAD_REQUEST);
+                    super.write(HttpStatus.BAD_REQUEST_400);
                 }
             }
         };
@@ -148,6 +150,7 @@ public class NetworkController extends Controller implements BapController, BppC
     }
 
 
+    /*
 
     @RequireLogin(false)
     public View read_events(String messageId){
@@ -204,6 +207,8 @@ public class NetworkController extends Controller implements BapController, BppC
         return eventView;
     }
 
+    
+     */
 
     public boolean isBapEndPoint(){
         return Subscriber.BAP_ACTION_SET.contains(getPath().action());
@@ -351,6 +356,14 @@ public class NetworkController extends Controller implements BapController, BppC
             tracker.start(request, isSearch? (ObjectUtil.isVoid(request.getContext().getBppId())?
                     subscriberMap.size() + subscribersWithInternalCatalog.size():1) : 1,
                     getPath().getHeader("SearchTransactionId"));
+            
+            boolean callBackToBeSynchronized = Database.getJdbcTypeHelper("").getTypeRef(boolean.class).getTypeConverter().valueOf(getPath().getHeader("X-CallBackToBeSynchronized"));
+            
+            if (callBackToBeSynchronized) {
+                ResponseCollector collector = new ResponseCollector(getPath(), tracker);
+                tracker.registerListener(collector);
+            }
+            
 
 
             //AsyncTaskManagerFactory.getInstance().addAll(
@@ -361,51 +374,14 @@ public class NetworkController extends Controller implements BapController, BppC
                 if (!subscribersWithInternalCatalog.isEmpty()) {
                     add(new BppRequestTask(tracker, source, subscribersWithInternalCatalog, networkAdaptor, request, headers, true));
                 }
-            }},false);
+            }},false,false);
 
 
-            boolean callBackToBeSynchronized = Database.getJdbcTypeHelper("").getTypeRef(boolean.class).getTypeConverter().valueOf(getPath().getHeader("X-CallBackToBeSynchronized"));
             if (!callBackToBeSynchronized) {
                 return ack(request);
             }else {
-
-                CoreEvent.spawnOff(new CoreEvent(){
-                    {
-                        tracker.registerListener(this);
-                    }
-                    final Requests requests = new Requests();
-                    @Override
-                    public void execute() {
-                        super.execute();
-                        Request response ;
-                        synchronized (tracker) {
-                            while ((response = tracker.nextResponse()) != null) {
-                                requests.add(response);
-                            }
-                            if (tracker.isComplete()) {
-                                ResponseSynchronizer.getInstance().closeTracker(request.getContext().getMessageId());
-                                try {
-                                    //Request connection is committed after this response is committed in HttpCoreEvent
-                                    new BytesView(getPath(), requests.getInner().toString().getBytes(StandardCharsets.UTF_8), MimeType.APPLICATION_JSON).write();
-                                }catch (IOException ex){
-                                    throw new RuntimeException(ex);
-                                }
-                            }else {
-                                tracker.registerListener(this);
-                            }
-                        }
-                    }
-
-                    @Override
-                    public boolean isReady() {
-                        return super.isReady() && ( !tracker.isBeingObserved() || tracker.isComplete()); //Clients will auto reconnect.
-                    }
-                });
-                return new NoContentView(getPath()); //Request is kept open
+                return new DelayedView(getPath());
             }
-
-
-
         }catch (Exception ex){
             throw new RuntimeException(ex);
         }
@@ -477,7 +453,7 @@ public class NetworkController extends Controller implements BapController, BppC
                     String auth = on_search.generateAuthorizationHeader(GWConfig.getSubscriberId(), GWConfig.getPublicKeyId());
 
                     AsyncTaskManagerFactory.getInstance().addAll(new ArrayList<>() {{
-                        add((IOTask) () -> {
+                        add((CoreTask) () -> {
                             BecknApiCall call = BecknApiCall.build().url(from.getSubscriberUrl(),
                                             on_search.getContext().getAction()).schema(networkAdaptor.getDomains().get(request.getContext().getDomain()).getSchemaURL()).
                                     headers(new HashMap<>() {{
@@ -499,10 +475,10 @@ public class NetworkController extends Controller implements BapController, BppC
 
             List<String> subscriberIds  = new ArrayList<>(targetSubscriberMap.keySet());
             Collections.shuffle(subscriberIds);
-            List<IOTask> tasks = new ArrayList<>();
+            List<CoreTask> tasks = new ArrayList<>();
             for (String subscriberId : subscriberIds){
                 Subscriber to = targetSubscriberMap.get(subscriberId);
-                tasks.add((IOTask)()->{
+                tasks.add((CoreTask) ()->{
                     BecknApiCall call = BecknApiCall.build().url(to.getSubscriberUrl(),
                                     request.getContext().getAction());
                     Domain domain = null;

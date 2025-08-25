@@ -18,7 +18,6 @@ import com.venky.swf.integration.api.HttpMethod;
 import com.venky.swf.integration.api.InputFormat;
 import com.venky.swf.path.Path;
 import com.venky.swf.plugins.background.core.CoreTask;
-import com.venky.swf.plugins.background.core.IOTask;
 import com.venky.swf.plugins.background.core.Task;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.routing.Config;
@@ -46,12 +45,12 @@ import in.succinct.catalog.indexer.ingest.CatalogDigester;
 import in.succinct.catalog.indexer.ingest.CatalogSearchEngine;
 import in.succinct.onet.core.adaptor.NetworkAdaptor;
 import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
+import org.apache.http.HttpStatus;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
-import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -97,7 +96,7 @@ public class BgController extends Controller {
                 "headers=\"(created) (expires) digest\""){
             @Override
             public void write() throws IOException {
-                super.write(HttpServletResponse.SC_UNAUTHORIZED);
+                super.write(HttpStatus.SC_UNAUTHORIZED);
             }
         };
     }
@@ -363,7 +362,7 @@ public class BgController extends Controller {
                 List<Subscriber> bpps = new ArrayList<>(subscriberMap.values());
                 Collections.shuffle(bpps);
                 for (Subscriber bpp : bpps) {
-                    TaskManager.instance().executeAsync((IOTask) () -> {
+                    TaskManager.instance().executeAsync((CoreTask) () -> {
                         Call < InputStream > call = new Call<InputStream>().url(bpp.getSubscriberUrl() + "/" + originalRequest.getContext().getAction()).
                                 method(HttpMethod.POST).inputFormat(InputFormat.INPUT_STREAM).timeOut(GWConfig.getTimeOut()).
                                 input(new ByteArrayInputStream(originalRequest.toString().getBytes(StandardCharsets.UTF_8))).headers(getHeaders(originalRequest));
@@ -397,7 +396,7 @@ public class BgController extends Controller {
 
     }
 
-    public static class OnSearch implements IOTask {
+    public static class OnSearch implements CoreTask {
         Request originalRequest;
         Subscriber bap ;
         Map<String,String> headers;

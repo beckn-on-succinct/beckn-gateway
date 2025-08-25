@@ -2,10 +2,8 @@ package in.succinct.beckn.gateway.controller.proxies;
 
 import com.venky.core.string.StringUtil;
 import com.venky.core.util.Bucket;
-import com.venky.core.util.ObjectUtil;
-import com.venky.swf.db.Database;
 import com.venky.swf.plugins.background.core.AsyncTaskManagerFactory;
-import com.venky.swf.plugins.background.eventloop.CoreEvent;
+import com.venky.swf.plugins.background.core.CoreTask;
 import com.venky.swf.routing.Config;
 import in.succinct.beckn.Request;
 
@@ -94,7 +92,7 @@ public class ResponseSynchronizer {
         Bucket pendingResponses;
         boolean shutdown = false;
         Request request = null;
-        CoreEvent listener = null;
+        CoreTask listener = null;
         //ScheduledFuture<?> keepAliveTrigger = null;
         // this is an over kill, we notify on message receipt and on shutdown thats enough.
         ScheduledFuture<?> shutDownTrigger = null;
@@ -102,6 +100,9 @@ public class ResponseSynchronizer {
 
         public Tracker(){
 
+        }
+        public String getMessageId(){
+            return request.getContext().getMessageId();
         }
         public void start(Request request,int maxResponses,String searchTransactionId){
             synchronized (this) {
@@ -207,7 +208,7 @@ public class ResponseSynchronizer {
             }
         }
 
-        public void registerListener(CoreEvent listener) {
+        public void registerListener(CoreTask listener) {
             synchronized (this) {
                 if (this.listener == null) {
                    this.listener = listener;
