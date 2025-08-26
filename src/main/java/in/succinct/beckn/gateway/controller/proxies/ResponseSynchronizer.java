@@ -176,9 +176,21 @@ public class ResponseSynchronizer {
             return null;
         }
 
+        public void close(){
+            this.shutdown(true);
+        }
         public void shutdown(){
+            shutdown(false);
+        }
+        private void shutdown(boolean clearMessages){
             synchronized (this) {
+                if (shutdown){
+                    return;
+                }
                 this.shutdown = true;
+                if (clearMessages){
+                    this.responses.clear();
+                }
                 /*
                 if (this.keepAliveTrigger != null && !this.keepAliveTrigger.isCancelled()) {
                     this.keepAliveTrigger.cancel(false);

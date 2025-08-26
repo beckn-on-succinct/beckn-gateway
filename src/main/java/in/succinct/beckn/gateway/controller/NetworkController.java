@@ -53,6 +53,7 @@ import in.succinct.beckn.gateway.controller.proxies.BppController;
 import in.succinct.beckn.gateway.controller.proxies.ResponseSynchronizer;
 import in.succinct.beckn.gateway.controller.proxies.ResponseSynchronizer.Tracker;
 import in.succinct.beckn.gateway.tasks.ResponseCollector;
+import in.succinct.beckn.gateway.tasks.ResponseStreamer;
 import in.succinct.beckn.gateway.util.GWConfig;
 import in.succinct.catalog.indexer.db.model.Provider;
 import in.succinct.catalog.indexer.ingest.CatalogDigester;
@@ -150,65 +151,15 @@ public class NetworkController extends Controller implements BapController, BppC
     }
 
 
-    /*
-
     @RequireLogin(false)
     public View read_events(String messageId){
-        final EventView eventView = new EventView(getPath());
         Tracker tracker = ResponseSynchronizer.getInstance().getTracker(messageId,false);
-
-        if (tracker != null) {
-            CoreEvent.spawnOff(false, new CoreEvent() {
-                {
-                    synchronized (tracker) {
-                        tracker.registerListener(this);
-                    }
-                }
-
-                @Override
-                public void execute() {
-                    super.execute();
-                    Request response;
-                    synchronized (tracker) {
-                        Bucket numResponsesReceived = new Bucket();
-                        while ((response = tracker.nextResponse()) != null) {
-                            try {
-                                numResponsesReceived.increment();
-                                eventView.write(response.toString());
-                            } catch (IOException ex) {
-                                ResponseSynchronizer.getInstance().closeTracker(messageId);
-                            }
-                        }
-                        try {
-                            if (tracker.isComplete()) {
-                                ResponseSynchronizer.getInstance().closeTracker(messageId);
-                                eventView.write(String.format("{\"done\" : true , \"message_id\" : \"%s\"}\n\n",messageId));
-                            } else if (numResponsesReceived.intValue() == 0){
-                                tracker.registerListener(this);
-                            }
-                        }catch (Exception ex){
-                            ResponseSynchronizer.getInstance().closeTracker(messageId);
-                        }
-                    }
-                }
-
-                @Override
-                public boolean isReady() {
-                    return super.isReady() && ( !tracker.isBeingObserved() || tracker.isComplete()); //Clients will auto reconnect.
-                }
-            });
-        }else {
-            try {
-                eventView.write("{\"done\" : true}");
-            }catch (Exception ex){
-                Config.instance().getLogger(getClass().getName()).log(Level.WARNING,"Inactive message could not be sent" ,ex);
-            }
-        }
-        return eventView;
+        
+        ResponseStreamer streamer = new ResponseStreamer(getPath(), tracker);
+        tracker.registerListener(streamer);
+        
+        return (View)streamer.createView();
     }
-
-    
-     */
 
     public boolean isBapEndPoint(){
         return Subscriber.BAP_ACTION_SET.contains(getPath().action());
