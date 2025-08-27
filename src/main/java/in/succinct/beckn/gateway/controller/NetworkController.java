@@ -3,7 +3,6 @@ package in.succinct.beckn.gateway.controller;
 import com.venky.core.collections.IgnoreCaseMap;
 import com.venky.core.security.Crypt;
 import com.venky.core.string.StringUtil;
-import com.venky.core.util.Bucket;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.controller.Controller;
 import com.venky.swf.controller.annotations.RequireLogin;
@@ -21,20 +20,20 @@ import com.venky.swf.plugins.background.core.CoreTask;
 import com.venky.swf.plugins.background.core.Task;
 import com.venky.swf.plugins.background.core.TaskManager;
 import com.venky.swf.plugins.beckn.tasks.BecknApiCall;
-import com.venky.swf.routing.Config;
+import com.venky.swf.plugins.beckn.tasks.ResponseCollector;
+import com.venky.swf.plugins.beckn.tasks.ResponseStreamer;
+import com.venky.swf.plugins.beckn.tasks.ResponseSynchronizer;
+import com.venky.swf.plugins.beckn.tasks.ResponseSynchronizer.Tracker;
 import com.venky.swf.sql.Expression;
 import com.venky.swf.sql.Operator;
 import com.venky.swf.sql.Select;
 import com.venky.swf.views.BytesView;
 import com.venky.swf.views.DelayedView;
 import com.venky.swf.views.EventView;
-import com.venky.swf.views.ForwardedView;
-import com.venky.swf.views.NoContentView;
 import com.venky.swf.views.View;
 import in.succinct.beckn.Acknowledgement;
 import in.succinct.beckn.Acknowledgement.Status;
 import in.succinct.beckn.BecknException;
-import in.succinct.beckn.BecknObjects;
 import in.succinct.beckn.City;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Country;
@@ -50,21 +49,16 @@ import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.VisibilityEvent;
 import in.succinct.beckn.gateway.controller.proxies.BapController;
 import in.succinct.beckn.gateway.controller.proxies.BppController;
-import in.succinct.beckn.gateway.controller.proxies.ResponseSynchronizer;
-import in.succinct.beckn.gateway.controller.proxies.ResponseSynchronizer.Tracker;
-import in.succinct.beckn.gateway.tasks.ResponseCollector;
-import in.succinct.beckn.gateway.tasks.ResponseStreamer;
 import in.succinct.beckn.gateway.util.GWConfig;
 import in.succinct.catalog.indexer.db.model.Provider;
 import in.succinct.catalog.indexer.ingest.CatalogDigester;
 import in.succinct.catalog.indexer.ingest.CatalogSearchEngine;
+import in.succinct.json.JSONObjectWrapper;
 import in.succinct.onet.core.adaptor.NetworkAdaptor;
 import in.succinct.onet.core.adaptor.NetworkAdaptor.Domain;
 import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
 import org.eclipse.jetty.http.HttpStatus;
-import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
@@ -85,7 +79,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 
 @SuppressWarnings("unused")
 public class NetworkController extends Controller implements BapController, BppController {
@@ -249,13 +242,6 @@ public class NetworkController extends Controller implements BapController, BppC
                 return new ArrayList<>() {{
                     add(GWConfig.getSubscriber());
                 }};
-                /*
-                return getNetworkAdaptor().lookup(new Subscriber(){{
-                    setType(Subscriber.SUBSCRIBER_TYPE_BG);
-                    setSubscriberId(GWConfig.getSubscriberId());
-                }},true);
-
-                 */
             }
         }
         return null;
@@ -347,18 +333,6 @@ public class NetworkController extends Controller implements BapController, BppC
         }
     }
 
-    public static class Requests extends BecknObjects<Request> {
-        public Requests() {
-        }
-
-        public Requests(JSONArray value) {
-            super(value);
-        }
-
-        public Requests(String payload) {
-            super(payload);
-        }
-    }
     public static class BppRequestTask implements Task {
         Map<String,Subscriber> targetSubscriberMap;
         Subscriber from;
@@ -577,9 +551,7 @@ public class NetworkController extends Controller implements BapController, BppC
                         });
                     }
                 }
-                tasks.add((Task) () -> {
-                    raiseEvent(request,headers);
-                });
+                tasks.add((Task) () -> raiseEvent(request,headers));
                 AsyncTaskManagerFactory.getInstance().addAll(tasks);
             }
             return ack(request);
@@ -612,10 +584,9 @@ public class NetworkController extends Controller implements BapController, BppC
     }
 
     @RequireLogin(false)
-    @SuppressWarnings("unchecked")
     public View on_subscribe() throws Exception{
         String payload = StringUtil.read(getPath().getInputStream());
-        JSONObject object = (JSONObject) JSONValue.parse(payload);
+        JSONObject object =  JSONObjectWrapper.parse(payload);
         Subscriber registry = getNetworkAdaptor().getRegistry();
         if (registry == null){
             throw new RuntimeException("Cannot verify Signature, Could not find registry keys for " + getNetworkAdaptor().getId());
