@@ -300,8 +300,7 @@ public class NetworkController extends Controller implements BapController, BppC
             Tracker tracker = ResponseSynchronizer.getInstance().createTracker(request);
 
             tracker.start(request, isSearch? (ObjectUtil.isVoid(request.getContext().getBppId())?
-                    subscriberMap.size() + subscribersWithInternalCatalog.size():1) : 1,
-                    getPath().getHeader("SearchTransactionId"));
+                    subscriberMap.size() + subscribersWithInternalCatalog.size():1) : 1);
             
             boolean callBackToBeSynchronized = Database.getJdbcTypeHelper("").getTypeRef(boolean.class).getTypeConverter().valueOf(getPath().getHeader("X-CallBackToBeSynchronized"));
             
