@@ -411,7 +411,7 @@ public class NetworkController extends Controller implements BapController, BppC
             List<CoreTask> tasks = new ArrayList<>();
             for (String subscriberId : subscriberIds){
                 Subscriber to = targetSubscriberMap.get(subscriberId);
-                tasks.add((CoreTask) ()->{
+                tasks.add((Task) ()->{
                     BecknApiCall call = BecknApiCall.build().url(to.getSubscriberUrl(),
                                     request.getContext().getAction());
                     Domain domain = null;
