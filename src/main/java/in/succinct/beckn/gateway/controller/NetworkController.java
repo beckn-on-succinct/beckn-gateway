@@ -3,6 +3,7 @@ package in.succinct.beckn.gateway.controller;
 import com.venky.core.collections.IgnoreCaseMap;
 import com.venky.core.security.Crypt;
 import com.venky.core.string.StringUtil;
+import com.venky.core.util.ExceptionUtil;
 import com.venky.core.util.ObjectUtil;
 import com.venky.swf.controller.Controller;
 import com.venky.swf.controller.annotations.RequireLogin;
@@ -24,6 +25,7 @@ import com.venky.swf.plugins.beckn.tasks.ResponseCollector;
 import com.venky.swf.plugins.beckn.tasks.ResponseStreamer;
 import com.venky.swf.plugins.beckn.tasks.ResponseSynchronizer;
 import com.venky.swf.plugins.beckn.tasks.ResponseSynchronizer.Tracker;
+import com.venky.swf.routing.Config;
 import com.venky.swf.sql.Expression;
 import com.venky.swf.sql.Operator;
 import com.venky.swf.sql.Select;
@@ -37,8 +39,10 @@ import in.succinct.beckn.BecknException;
 import in.succinct.beckn.City;
 import in.succinct.beckn.Context;
 import in.succinct.beckn.Country;
+import in.succinct.beckn.Descriptor;
 import in.succinct.beckn.Error;
 import in.succinct.beckn.Error.Type;
+import in.succinct.beckn.Intent;
 import in.succinct.beckn.Location;
 import in.succinct.beckn.Request;
 import in.succinct.beckn.Response;
@@ -49,6 +53,14 @@ import in.succinct.beckn.Subscriber;
 import in.succinct.beckn.VisibilityEvent;
 import in.succinct.beckn.gateway.controller.proxies.BapController;
 import in.succinct.beckn.gateway.controller.proxies.BppController;
+import in.succinct.beckn.gateway.db.model.LlmChatHistory;
+import in.succinct.beckn.gateway.db.model.LlmSystemPrompt;
+import in.succinct.beckn.gateway.db.model.json.LLMMessage;
+import in.succinct.beckn.gateway.db.model.json.LLMMessage.Role;
+import in.succinct.beckn.gateway.db.model.json.LLMMessages;
+import in.succinct.beckn.gateway.db.model.json.LLMResponse;
+import in.succinct.beckn.gateway.db.model.json.LLMResponse.Choice;
+import in.succinct.beckn.gateway.db.model.json.LLmPayload;
 import in.succinct.beckn.gateway.util.GWConfig;
 import in.succinct.catalog.indexer.db.model.Provider;
 import in.succinct.catalog.indexer.ingest.CatalogDigester;
@@ -57,8 +69,11 @@ import in.succinct.json.JSONObjectWrapper;
 import in.succinct.onet.core.adaptor.NetworkAdaptor;
 import in.succinct.onet.core.adaptor.NetworkAdaptor.Domain;
 import in.succinct.onet.core.adaptor.NetworkAdaptorFactory;
+import org.checkerframework.checker.regex.qual.Regex;
 import org.eclipse.jetty.http.HttpStatus;
 import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import org.json.simple.parser.ParseException;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
@@ -79,6 +94,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @SuppressWarnings("unused")
 public class NetworkController extends Controller implements BapController, BppController {
@@ -281,7 +298,7 @@ public class NetworkController extends Controller implements BapController, BppC
 
             Subscriber self = GWConfig.getSubscriber();
             if (!headers.containsKey("Authorization") && ObjectUtil.isVoid(request.getContext().getBapId())){
-                initializeRequest(self,request); //BG Pretends to be BAP!!
+                initializeRequest(self,request,isSearch); //BG Pretends to be BAP!!
             }else if (GWConfig.isAuthorizationHeaderEnabled() &&
                       !request.verifySignature("Authorization",headers, GWConfig.isAuthorizationHeaderMandatory())){
                 throw new InvalidSignature();
@@ -469,7 +486,7 @@ public class NetworkController extends Controller implements BapController, BppC
         }
     }
 
-    private void initializeRequest(Subscriber self,Request request) {
+    private void initializeRequest(Subscriber self,Request request, boolean isSearch) {
         NetworkAdaptor networkAdaptor = getNetworkAdaptor();
         Context context = request.getContext();
         if (context == null) {
@@ -500,9 +517,108 @@ public class NetworkController extends Controller implements BapController, BppC
         if (ObjectUtil.isVoid(context.getMessageId())) {
             context.setMessageId(UUID.randomUUID().toString());
         }
+        if (isSearch) {
+            Descriptor descriptor = request.getMessage().getIntent().getDescriptor();
+            String langQuery = descriptor == null ? null : descriptor.getLongDesc();
+            if (!ObjectUtil.isVoid(langQuery) && !ObjectUtil.isVoid(Config.instance().getProperty("in.succinct.llm.engine"))) {
+                Intent intent = createLLMResponse(context, langQuery);
+                if (intent != null) {
+                    Intent orig = request.getMessage().getIntent();
+                    orig.getDescriptor().setLongDesc(null);
+                    orig.update(intent,false);
+                    if (ObjectUtil.isVoid(orig.getDescriptor().getLongDesc())){
+                        orig.getDescriptor().setLongDesc(langQuery);
+                    }
+                }
+            }
+        }
+        
         request.setPayload(request.getInner().toString());
     }
+    
+    private Intent createLLMResponse(Context context, String langQuery) {
+        LLmPayload payload = new LLmPayload();
+        LLMMessages messages = payload.getMessages();
+        LlmSystemPrompt systemPrompt = loadSystemPrompts(messages);
+        
+        /*
+        Dont include history for now.
+        Select select = new Select().from(LlmChatHistory.class);
+        select.where(new Expression(select.getPool(),"TRANSACTION_ID",Operator.EQ,context.getTransactionId())).execute();
+        for (LlmChatHistory llmChatHistory : select.orderBy("CREATED_AT", "ID").execute(LlmChatHistory.class)) {
+            messages.add(new LLMMessage(){{
+                setContent(llmChatHistory.getContent());
+                setRole(Role.valueOf(llmChatHistory.getRole()));
+            }});
+        }*/
+        LLMMessage current = new LLMMessage(){{
+            setContent(langQuery);
+            setRole(Role.user);
+        }};
+        messages.add(current);
+        storeLastMessage(context,current);
+        payload.setMessages(messages);
 
+        Pattern pattern = Pattern.compile("(^```json)(.*)(```$)",Pattern.MULTILINE |Pattern.DOTALL);
+        
+        for (int i = 0 ; i < 1 ; i++) {
+            JSONObject response = new Call<JSONObject>().url(getLLMUrl(), systemPrompt.getChatUrlPath()).header("content-type", MimeType.APPLICATION_JSON.toString()).inputFormat(InputFormat.JSON).
+                    input(payload.getInner()).getResponseAsJson();
+            LLMResponse llmResponse = new LLMResponse(response);
+            for (Choice choice : llmResponse.getChoices()){
+                storeLastMessage(context,choice.getMessage());
+            }
+            
+            LLMMessage message = llmResponse.getChoices().get(0).getMessage();
+            
+            try {
+                Matcher matcher = pattern.matcher(message.getContent());
+                if (matcher.matches()){
+                    return new Intent(matcher.group(2));
+                }else {
+                    return new Intent(message.getContent());
+                }
+            }catch (Throwable ex){
+                if (ExceptionUtil.getRootCause(ex) instanceof ParseException) {
+                    payload.getMessages().add(new LLMMessage() {{
+                        setContent("You must Return a valid JSON as a response. there must be no  notes or comments outside of it.");
+                        setRole(Role.user);
+                    }});
+                }
+            }
+            
+        }
+        return null;
+    }
+    private String getLLMEngine(){
+        return Config.instance().getProperty("in.succinct.llm.engine","llama");
+    }
+    public String getLLMUrl(){
+        return Config.instance().getProperty("in.succinct.%s.url".formatted(getLLMEngine()));
+    }
+    
+    private LlmSystemPrompt loadSystemPrompts(LLMMessages messages) {
+        LlmSystemPrompt systemPrompt = Database.getTable(LlmSystemPrompt.class).newRecord();
+        systemPrompt.setLLmEngine(getLLMEngine());
+        systemPrompt.setAssistant("search");
+        
+        systemPrompt = Database.getTable(LlmSystemPrompt.class).getRefreshed(systemPrompt);
+        LLMMessage sysmessage = new LLMMessage();
+        sysmessage.setContent(StringUtil.read(systemPrompt.getContent()));
+        sysmessage.setRole(Role.system);
+        
+        messages.add(sysmessage);
+        return systemPrompt;
+    }
+    
+    private void storeLastMessage(Context context, LLMMessage current) {
+        LlmChatHistory newMessage = Database.getTable(LlmChatHistory.class).newRecord();
+        newMessage.setTransactionId(context.getTransactionId());
+        newMessage.setContent(current.getContent());
+        newMessage.setRole(current.getRole().toString());
+        newMessage.save();
+    }
+    
     public View on_act(){
 
         try {
