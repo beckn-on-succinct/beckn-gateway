@@ -336,7 +336,7 @@ public class NetworkController extends Controller implements BapController, BppC
                 if (!subscribersWithInternalCatalog.isEmpty()) {
                     add(new BppRequestTask(tracker, source, subscribersWithInternalCatalog, networkAdaptor, request, headers, true));
                 }
-            }},false,false);
+            }},false,!callBackToBeSynchronized);
 
 
             if (!callBackToBeSynchronized) {
