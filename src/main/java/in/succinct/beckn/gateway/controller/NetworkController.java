@@ -164,19 +164,23 @@ public class NetworkController extends Controller implements BapController, BppC
     @RequireLogin(false)
     public View read_events(String messageId){
         Tracker tracker = ResponseSynchronizer.getInstance().getTracker(messageId,false);
-        if (tracker != null) {
-            ResponseStreamer streamer = new ResponseStreamer(getPath(), tracker);
-            tracker.registerListener(streamer);
-            return (View)streamer.createView();
-        }else {
-            try {
-                EventView eventView = new EventView(getPath());
-                eventView.write(String.format("{\"done\" : true , \"message_id\" : \"%s\"}\n\n", messageId), true);
-                return eventView;
-            }catch (IOException ex){
-                throw new RuntimeException(ex);
+        if (tracker != null ) {
+            synchronized (tracker){
+                if (!tracker.isComplete()){
+                    ResponseStreamer streamer = new ResponseStreamer(getPath(), tracker);
+                    tracker.registerListener(streamer);
+                    return (View)streamer.createView();
+                }
             }
         }
+        try {
+            EventView eventView = new EventView(getPath());
+            eventView.write(String.format("{\"done\" : true , \"message_id\" : \"%s\"}\n\n", messageId), true);
+            return eventView;
+        }catch (IOException ex){
+            throw new RuntimeException(ex);
+        }
+    
         
     }
 
