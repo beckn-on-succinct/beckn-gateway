@@ -168,7 +168,6 @@ public class NetworkController extends Controller implements BapController, BppC
             synchronized (tracker){
                 if (!tracker.isComplete()){
                     ResponseStreamer streamer = new ResponseStreamer(getPath(), tracker);
-                    tracker.registerListener(streamer);
                     return (View)streamer.createView();
                 }
             }
